@@ -22,7 +22,11 @@ export function notifySessionExpired(): void {
   }
 }
 
-export function saveSession(token: string, expiresInSeconds: number, profile: DemoProfile): SessionData {
+export function saveSession(
+  token: string,
+  expiresInSeconds: number,
+  profile: DemoProfile,
+): SessionData {
   const expiresAt = Date.now() + expiresInSeconds * 1000;
   const data: SessionData = {
     accessToken: token,
@@ -30,16 +34,16 @@ export function saveSession(token: string, expiresInSeconds: number, profile: De
     profile,
   };
   try {
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
   } catch (err) {
-    console.warn("Failed to persist session to localStorage", err);
+    console.warn("Failed to persist session to sessionStorage", err);
   }
   return data;
 }
 
 export function getStoredSession(): SessionData | null {
   try {
-    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
     const session: SessionData = JSON.parse(raw);
     if (Date.now() >= session.expiresAt) {
@@ -60,7 +64,7 @@ export function getValidToken(): string | null {
 
 export function clearStoredSession(): void {
   try {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
   } catch {
     // ignore
   }

@@ -3,13 +3,13 @@ import { getValidToken, notifySessionExpired } from "./sessionStore";
 
 const DEFAULT_BASE_URL = "https://api.campusos.edu";
 
-function getApiBaseUrl(): string {
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
+export function getApiBaseUrl(): string {
+  const envUrl = typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_BASE_URL : undefined;
   const base = envUrl && envUrl.trim() ? envUrl.trim() : DEFAULT_BASE_URL;
   return base.replace(/\/+$/, "");
 }
 
-function resolveEndpointUrl(path: string): string {
+export function resolveEndpointUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
@@ -22,7 +22,7 @@ function resolveEndpointUrl(path: string): string {
   return `${baseUrl}/api/v1${normalizedPath}`;
 }
 
-function parseFilenameFromContentDisposition(
+export function parseFilenameFromContentDisposition(
   header: string | null,
   fallback: string,
 ): string {
@@ -38,10 +38,10 @@ function parseFilenameFromContentDisposition(
     }
   }
 
-  // Standard pattern filename="name"
+  // Standard pattern filename="name" or filename=name
   const standardMatch = /filename="?([^";]+)"?/i.exec(header);
   if (standardMatch && standardMatch[1]) {
-    return standardMatch[1];
+    return standardMatch[1].trim();
   }
 
   return fallback;
@@ -50,6 +50,7 @@ function parseFilenameFromContentDisposition(
 export async function apiFetch(
   path: string,
   options: RequestInit = {},
+  timeoutMs = 30000,
 ): Promise<Response> {
   const url = resolveEndpointUrl(path);
   const headers = new Headers(options.headers || {});
@@ -63,20 +64,29 @@ export async function apiFetch(
     headers.set("Accept", "application/json");
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const mergedOptions: RequestInit = {
     ...options,
     headers,
+    signal: options.signal || controller.signal,
   };
 
   let response: Response;
   try {
     response = await fetch(url, mergedOptions);
-  } catch (err) {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError(0, "TIMEOUT", "Request timed out after 30 seconds");
+    }
     throw new ApiError(
       0,
       "NETWORK_ERROR",
       err instanceof Error ? err.message : "Network error occurred",
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (response.status === 401) {
@@ -166,7 +176,7 @@ export const campusOsClient = {
   },
 
   /**
-   * Multipart Form-Data POST (e.g. answer submit with document)
+   * Multipart Form-Data POST (e.g. answer submission with document)
    * Note: Do NOT set Content-Type header manually; browser sets boundary.
    */
   async postForm<T>(path: string, formData: FormData): Promise<T> {
@@ -177,7 +187,7 @@ export const campusOsClient = {
   },
 
   /**
-   * Multipart Form-Data PATCH
+   * Multipart Form-Data PATCH (e.g. answer edit with document)
    */
   async patchForm<T>(path: string, formData: FormData): Promise<T> {
     return requestJson<T>(path, {
@@ -198,7 +208,7 @@ export const campusOsClient = {
 
   /**
    * Binary File Download Transport
-   * Downloads file with Bearer auth, extracts filename, triggers browser download.
+   * Downloads file with Bearer auth, extracts filename from Content-Disposition.
    */
   async downloadFile(
     path: string,
@@ -221,18 +231,6 @@ export const campusOsClient = {
       disposition,
       defaultFilename,
     );
-
-    // Trigger browser download action
-    if (typeof window !== "undefined" && window.URL && window.document) {
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = downloadUrl;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 1000);
-    }
 
     return { blob, filename };
   },

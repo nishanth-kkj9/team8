@@ -8,32 +8,21 @@ import {
   type ReactNode,
 } from "react";
 import type { DemoProfile } from "../types/auth";
-import { seedProfiles } from "../data/seedProfiles";
-import { docDeskService, isMockMode } from "../services/serviceProvider";
+import { docDeskService } from "../services/serviceProvider";
 import { isValidEmail } from "../lib/validation";
 import { campusOsAuthService } from "../services/api/campusOsAuthService";
 import { setOnSessionExpiredListener } from "../services/api/sessionStore";
 
-const STORAGE_KEY_VIEWER = "docdesk.demo.viewer.v1";
-
 type AuthStatus = "restoring" | "signed-out" | "signed-in";
 
-interface DemoAuthContextValue {
+interface AuthContextValue {
   profile: DemoProfile | null;
   status: AuthStatus;
-  signInWithDemoAccount(profile: DemoProfile): void;
   signInWithEmail(email: string, otp: string): Promise<DemoProfile>;
   signOut(): void;
 }
 
-const DemoAuthContext = createContext<DemoAuthContextValue | null>(null);
-
-function findProfileByEmail(email: string): DemoProfile | undefined {
-  const needle = email.trim().toLowerCase();
-  return Object.values(seedProfiles).find(
-    (p) => p.email_id.toLowerCase() === needle,
-  );
-}
+const DemoAuthContext = createContext<AuthContextValue | null>(null);
 
 export function DemoAuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<DemoProfile | null>(null);
@@ -41,13 +30,12 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     campusOsAuthService.logout();
-    localStorage.removeItem(STORAGE_KEY_VIEWER);
     docDeskService.setViewer(null);
     setProfile(null);
     setStatus("signed-out");
   }, []);
 
-  // Subscribe to automatic session expiry events (e.g. 401 TOKEN_EXPIRED from API)
+  // Listen to automatic session expiry events (e.g. 401 response from API)
   useEffect(() => {
     setOnSessionExpiredListener(() => {
       signOut();
@@ -55,38 +43,24 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
     return () => setOnSessionExpiredListener(null);
   }, [signOut]);
 
-  // Restore active session on mount
+  // Restore authenticated session on mount from sessionStorage
   useEffect(() => {
     let mounted = true;
 
     async function restoreSession() {
-      // 1. Check real API session in sessionStore
       const apiSession = campusOsAuthService.getValidSession();
       if (apiSession) {
         try {
-          const fullProfile = await campusOsAuthService.getCurrentProfile();
-          if (mounted && fullProfile) {
-            docDeskService.setViewer(fullProfile);
-            setProfile(fullProfile);
+          const authoritativeProfile = await campusOsAuthService.getCurrentProfile();
+          if (mounted && authoritativeProfile) {
+            docDeskService.setViewer(authoritativeProfile);
+            setProfile(authoritativeProfile);
             setStatus("signed-in");
             return;
           }
         } catch {
-          // Fall through to mock session if API profile fetch fails
-        }
-      }
-
-      // 2. Fall back to demo preference in mock mode
-      if (isMockMode()) {
-        const storedEmail = localStorage.getItem(STORAGE_KEY_VIEWER);
-        if (storedEmail) {
-          const match = findProfileByEmail(storedEmail);
-          if (mounted && match) {
-            docDeskService.setViewer(match);
-            setProfile(match);
-            setStatus("signed-in");
-            return;
-          }
+          // If profile fetch fails or token invalid, clear session
+          campusOsAuthService.logout();
         }
       }
 
@@ -95,63 +69,36 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    restoreSession();
+    void restoreSession();
     return () => {
       mounted = false;
     };
   }, []);
 
-  const applyProfile = useCallback((next: DemoProfile) => {
-    docDeskService.setViewer(next);
-    localStorage.setItem(STORAGE_KEY_VIEWER, next.email_id);
-    setProfile(next);
-    setStatus("signed-in");
-  }, []);
-
-  const signInWithDemoAccount = useCallback(
-    (next: DemoProfile) => {
-      applyProfile(next);
-    },
-    [applyProfile],
-  );
-
   const signInWithEmail = useCallback(
     async (email: string, otp: string): Promise<DemoProfile> => {
-      const trimmed = email.trim();
-      if (!isValidEmail(trimmed)) {
+      const trimmedEmail = email.trim();
+      const trimmedOtp = otp.trim();
+
+      if (!isValidEmail(trimmedEmail)) {
         throw new Error("Enter a valid email address.");
       }
-      if (!otp.trim()) {
+      if (!trimmedOtp) {
         throw new Error("OTP is required.");
       }
 
-      // If running with real CampusOS API enabled:
-      if (!isMockMode()) {
-        const authenticatedProfile = await campusOsAuthService.login(trimmed, otp);
-        applyProfile(authenticatedProfile);
-        return authenticatedProfile;
-      }
-
-      // Mock mode fallback:
-      if (otp.trim().length < 4) {
-        throw new Error("Enter the demo OTP (any 4+ characters).");
-      }
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const match = findProfileByEmail(trimmed);
-      if (!match) {
-        throw new Error(
-          "No demo account uses this email. Pick one of the demo accounts below.",
-        );
-      }
-      applyProfile(match);
-      return match;
+      const authenticatedProfile = await campusOsAuthService.login(trimmedEmail, trimmedOtp);
+      docDeskService.setViewer(authenticatedProfile);
+      setProfile(authenticatedProfile);
+      setStatus("signed-in");
+      return authenticatedProfile;
     },
-    [applyProfile],
+    [],
   );
 
   const value = useMemo(
-    () => ({ profile, status, signInWithDemoAccount, signInWithEmail, signOut }),
-    [profile, status, signInWithDemoAccount, signInWithEmail, signOut],
+    () => ({ profile, status, signInWithEmail, signOut }),
+    [profile, status, signInWithEmail, signOut],
   );
 
   return (
@@ -161,8 +108,12 @@ export function DemoAuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useDemoAuth(): DemoAuthContextValue {
+export const AuthProvider = DemoAuthProvider;
+
+export function useDemoAuth(): AuthContextValue {
   const ctx = useContext(DemoAuthContext);
   if (!ctx) throw new Error("useDemoAuth must be used within DemoAuthProvider");
   return ctx;
 }
+
+export const useAuth = useDemoAuth;

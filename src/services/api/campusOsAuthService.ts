@@ -19,7 +19,7 @@ const TEAM8_ADMIN_EMAIL = "admin@team8.com";
 
 export const campusOsAuthService = {
   /**
-   * Performs authentication via CampusOS auth endpoints.
+   * Performs authentication via official CampusOS auth endpoints.
    * Admin uses POST /api/v1/auth/admin/login
    * Requester/Staff uses POST /api/v1/auth/login
    */
@@ -47,11 +47,8 @@ export const campusOsAuthService = {
           },
         );
       } catch (err) {
-        if (
-          err instanceof ApiError &&
-          (err.code === "USE_ADMIN_LOGIN" || err.status === 400)
-        ) {
-          // If server demands admin login endpoint, retry via admin login endpoint
+        // Only retry admin endpoint if server specifically returned USE_ADMIN_LOGIN
+        if (err instanceof ApiError && err.code === "USE_ADMIN_LOGIN") {
           responseData = await campusOsClient.post<LoginResponsePayload>(
             "/auth/admin/login",
             {
@@ -70,41 +67,60 @@ export const campusOsAuthService = {
       throw new ApiError(500, "AUTH_ERROR", "No access_token returned by login endpoint");
     }
 
-    const expiresIn = responseData.expires_in || 43200; // default 12 hours
+    const expiresIn = responseData.expires_in && responseData.expires_in > 0
+      ? responseData.expires_in
+      : 43200; // default 12 hours
 
-    // Temporarily save token so profile fetch has Authorization header
+    // Temporarily save token so profile request carries Authorization: Bearer
     saveSession(token, expiresIn, responseData.profile || {
       role: isAdminEmail ? "admin" : "student",
       team_id: "team8",
-      name: isAdminEmail ? "Team 8 Admin" : trimmedEmail,
+      name: "",
       email_id: trimmedEmail,
     });
 
-    // Hydrate full user/admin profile
-    let fullProfile: DemoProfile;
+    // Hydrate authoritative profile from /me endpoint
+    let authoritativeProfile: DemoProfile | undefined;
+    const isDeterminedAdmin = isAdminEmail || responseData.profile?.role === "admin";
+
     try {
-      if (isAdminEmail || responseData.profile?.role === "admin") {
-        fullProfile = await campusOsClient.get<DemoProfile>("/admin/me");
+      let rawProfile: any;
+      if (isDeterminedAdmin) {
+        rawProfile = await campusOsClient.get<any>("/admin/me");
       } else {
-        fullProfile = await campusOsClient.get<DemoProfile>("/users/me");
+        rawProfile = await campusOsClient.get<any>("/users/me");
       }
+      authoritativeProfile = (rawProfile && rawProfile.profile) ? rawProfile.profile : rawProfile;
     } catch {
-      // Fallback to profile returned in login payload if /me endpoint fails
-      fullProfile = responseData.profile || {
-        role: isAdminEmail ? "admin" : "student",
-        team_id: "team8",
-        name: isAdminEmail ? "Team 8 Admin" : trimmedEmail,
-        email_id: trimmedEmail,
-      };
+      // If /me call fails, use the profile provided in the login payload if available
+      if (responseData.profile && responseData.profile.role) {
+        authoritativeProfile = responseData.profile;
+      } else {
+        clearStoredSession();
+        throw new ApiError(
+          500,
+          "PROFILE_FETCH_FAILED",
+          "Could not retrieve authenticated user profile from CampusOS.",
+        );
+      }
     }
 
-    // Update saved session with hydrated profile
-    saveSession(token, expiresIn, fullProfile);
-    return fullProfile;
+    if (!authoritativeProfile || !authoritativeProfile.role) {
+      clearStoredSession();
+      throw new ApiError(
+        500,
+        "INVALID_PROFILE",
+        "Authoritative profile returned from CampusOS was missing required role information.",
+      );
+    }
+
+    // Update stored session with authoritative profile
+    saveSession(token, expiresIn, authoritativeProfile);
+    return authoritativeProfile;
   },
 
   /**
-   * Fetches full profile for current session
+   * Fetches full authoritative profile for active session
    */
   async getCurrentProfile(role?: string): Promise<DemoProfile | null> {
     const session = getStoredSession();
@@ -128,7 +144,7 @@ export const campusOsAuthService = {
   },
 
   /**
-   * Logs out by clearing local session
+   * Logs out by clearing session
    */
   logout(): void {
     clearStoredSession();

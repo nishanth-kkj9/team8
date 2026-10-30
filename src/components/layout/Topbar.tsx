@@ -27,7 +27,7 @@ export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
   const [helpOpen, setHelpOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // Close the profile menu on outside click.
+  // Close profile menu on outside click
   useEffect(() => {
     if (!menuOpen) return;
     const onPointerDown = (event: MouseEvent) => {
@@ -39,7 +39,7 @@ export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [menuOpen]);
 
-  // Close the profile menu on route change.
+  // Close profile menu on route change
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname, location.search]);
@@ -140,7 +140,7 @@ export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
       </div>
 
       <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="About DocDesk">
-        <ul className="list-disc space-y-1.5 pl-4">
+        <ul className="list-disc space-y-1.5 pl-4 text-sm text-ink-700">
           <li>
             DocDesk is the official CampusOS academic document request platform.
           </li>

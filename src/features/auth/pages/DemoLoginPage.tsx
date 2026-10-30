@@ -38,9 +38,9 @@ function targetFor(profile: DemoProfile, from?: string): string {
 }
 
 /**
- * Production Login Page. Email + OTP authentication against CampusOS API endpoints.
- * Admin users route to POST /api/v1/auth/admin/login.
- * Requesters/Staff route to POST /api/v1/auth/login.
+ * Production Login Page. Email + OTP authentication against official CampusOS API endpoints.
+ * Admin users authenticate via POST /api/v1/auth/admin/login.
+ * Students, Faculty, and Office Staff authenticate via POST /api/v1/auth/login.
  */
 export function DemoLoginPage() {
   const { profile, status, signInWithEmail } = useDemoAuth();
@@ -78,12 +78,13 @@ export function DemoLoginPage() {
     }
     setErrors(next);
     if (Object.keys(next).length > 0) return;
+
     setSubmitting(true);
     try {
       const signedIn = await signInWithEmail(email, otp);
       toast({
         title: `Signed in as ${signedIn.name}`,
-        description: "CampusOS session authenticated.",
+        description: "CampusOS session authenticated successfully.",
         variant: "success",
       });
       navigate(targetFor(signedIn, from), { replace: true });
@@ -121,6 +122,7 @@ export function DemoLoginPage() {
               "One desk for bonafide certificates, transcripts, scholarship forms and more",
               "Transparent lifecycle: pending → answered → acknowledged",
               "Turnaround expectations set by Student Affairs",
+              "Secure document download and filled-form return workflow",
             ].map((line) => (
               <li key={line} className="flex items-start gap-2">
                 <span
@@ -133,7 +135,7 @@ export function DemoLoginPage() {
           </ul>
         </div>
         <p className="relative text-xs text-primary-200/70">
-          CampusOS Academic Platform — Production Build
+          CampusOS Academic Platform — Production Submission
         </p>
       </aside>
 
@@ -149,7 +151,7 @@ export function DemoLoginPage() {
               Sign in to DocDesk
             </h2>
             <p className="text-sm text-ink-500">
-              Enter your registered email address and OTP to continue.
+              Enter your registered CampusOS email and one-time password (OTP).
             </p>
           </div>
 
@@ -172,7 +174,7 @@ export function DemoLoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="user@team8.com"
+                placeholder="name@campus.edu"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 invalid={!!errors.email}
@@ -218,10 +220,12 @@ export function DemoLoginPage() {
 
           <p className="flex items-center justify-center gap-1.5 text-center text-xs text-ink-400">
             <ShieldCheck aria-hidden className="h-3.5 w-3.5 shrink-0" />
-            Authenticated via official CampusOS API endpoints.
+            Authenticated directly against official CampusOS API endpoints.
           </p>
         </div>
       </main>
     </div>
   );
 }
+
+export const LoginPage = DemoLoginPage;
