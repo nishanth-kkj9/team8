@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CampusOS API Flow Guide</title>
+<style>
+  :root {
+    --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0; --bg-soft: #f8fafc;
+    --brand: #4338ca; --brand-soft: #eef2ff;
+    --admin: #7c3aed; --admin-soft: #f3e8ff;
+    --student: #2563eb; --student-soft: #dbeafe;
+    --faculty: #059669; --faculty-soft: #d1fae5;
+    --staff: #d97706; --staff-soft: #fef3c7;
+    --bonus: #ca8a04; --bonus-soft: #fefce8;
+    --bad: #dc2626; --bad-soft: #fee2e2;
+  }
+  @page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--ink); background: #fff;
+    font: 10.5pt/1.55 -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+  code, .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.88em; }
+  code { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+  h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4mm; letter-spacing: -0.01em; }
+  h1 .num { color: var(--brand); margin-right: 6px; }
+  h2 { font-size: 13.5pt; margin: 7mm 0 2.5mm; }
+  h3 { font-size: 11pt; margin: 5mm 0 2mm; }
+  p { margin: 0 0 2.5mm; }
+  .lead { font-size: 11.5pt; color: var(--ink-2); margin-bottom: 5mm; }
+  .chapter { break-before: page; }
+  figure { margin: 3mm 0 4mm; break-inside: avoid; border: 1px solid var(--line); border-radius: 10px; padding: 4mm 4mm 3mm; }
+  figure.plain { border: 0; padding: 0; }
+  figcaption { font-size: 9pt; color: var(--muted); margin-top: 2mm; text-align: center; }
+  .mmd { display: flex; justify-content: center; }
+  .mmd svg { max-width: 100%; height: auto; max-height: 170mm; }
+  .short .mmd svg { max-height: 85mm; }
+  .keep { break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.5pt; break-inside: auto; }
+  th, td { text-align: left; vertical-align: top; padding: 1.6mm 2.2mm; border-bottom: 1px solid var(--line); }
+  th { background: var(--bg-soft); font-weight: 600; color: var(--ink-2); }
+  tr { break-inside: avoid; }
+  .callout { border-left: 4px solid var(--brand); background: var(--brand-soft); padding: 3mm 4mm; border-radius: 0 8px 8px 0; margin: 3mm 0 4mm; break-inside: avoid; }
+  .callout.warn { border-color: var(--bad); background: var(--bad-soft); }
+  .callout.bonus { border-color: var(--bonus); background: var(--bonus-soft); }
+  .callout b:first-child { display: block; margin-bottom: 1mm; }
+  .bonus-box { border: 2px dashed var(--bonus); background: var(--bonus-soft); border-radius: 12px; padding: 3mm 5mm 2mm; margin: 5mm 0; break-inside: avoid; }
+  .bonus-box > h3:first-child { margin-top: 1mm; }
+  .star { color: var(--bonus); }
+  .tag { display: inline-block; font-size: 8pt; font-weight: 600; padding: 0.3mm 2mm; border-radius: 99px; vertical-align: 1px; white-space: nowrap; }
+  .t-admin { background: var(--admin-soft); color: #5b21b6; }
+  .t-student { background: var(--student-soft); color: #1e40af; }
+  .t-faculty { background: var(--faculty-soft); color: #065f46; }
+  .t-staff { background: var(--staff-soft); color: #92400e; }
+  .t-bonus { background: #fef08a; color: #713f12; }
+  .t-get { background: #dcfce7; color: #166534; } .t-post { background: #dbeafe; color: #1e40af; }
+  .t-patch { background: #fef3c7; color: #92400e; } .t-put { background: #ede9fe; color: #5b21b6; }
+  .t-delete { background: #fee2e2; color: #991b1b; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 3mm 3.5mm; break-inside: avoid; }
+  .card h4 { margin: 0 0 1.5mm; font-size: 10.5pt; }
+  .card ul { margin: 0; padding-left: 4.5mm; font-size: 9.3pt; }
+  .card.admin { border-top: 4px solid var(--admin); } .card.student { border-top: 4px solid var(--student); }
+  .card.faculty { border-top: 4px solid var(--faculty); } .card.staff { border-top: 4px solid var(--staff); }
+  .card.bonus { border-top: 4px solid var(--bonus); }
+  .small { font-size: 9pt; color: var(--muted); }
+  ol.steps, ul.tight { margin: 0 0 3mm; padding-left: 6mm; } ol.steps li, ul.tight li { margin-bottom: 1mm; }
+  .see { font-size: 9pt; color: var(--brand); font-weight: 600; }
+
+  /* cover */
+  .cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .cover .band { background: linear-gradient(135deg, #312e81, #4338ca 55%, #6d28d9); color: #fff; border-radius: 16px; padding: 16mm 12mm 14mm; }
+  .cover .kicker { font-size: 10pt; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
+  .cover h1 { font-size: 34pt; margin: 4mm 0 3mm; }
+  .cover .sub { font-size: 13pt; opacity: 0.92; max-width: 140mm; }
+  .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 6mm; font-size: 9.5pt; }
+  .legend div { display: flex; align-items: center; gap: 2.5mm; }
+  .sw { width: 9mm; height: 5mm; border-radius: 3px; border: 2px solid; flex: none; }
+  .toc { columns: 2; column-gap: 8mm; font-size: 10pt; padding-left: 5mm; margin: 0; }
+  .toc li { margin-bottom: 1.2mm; break-inside: avoid; }
+
+  /* request anatomy */
+  .anatomy { display: grid; grid-template-columns: 34mm 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 9.5pt; break-inside: avoid; margin: 3mm 0; }
+  .anatomy > div { padding: 2mm 3mm; border-bottom: 1px solid var(--line); }
+  .anatomy .k { background: var(--bg-soft); font-weight: 600; }
+  .anatomy .v { font-family: "SF Mono", Menlo, monospace; font-size: 8.8pt; white-space: pre-wrap; }
+  .anatomy .v em { font-family: -apple-system, "Helvetica Neue", sans-serif; font-style: normal; color: var(--muted); font-size: 8.8pt; }
+  pre.code { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 3mm 4mm; font: 8.6pt/1.5 "SF Mono", Menlo, monospace; white-space: pre-wrap; margin: 2mm 0 4mm; break-inside: avoid; }
+  pre.code .c { color: #94a3b8; } pre.code .s { color: #86efac; } pre.code .k { color: #93c5fd; }
+
+  /* permission matrix */
+  table.matrix th, table.matrix td { text-align: center; padding: 1.2mm 1.2mm; font-size: 8.8pt; }
+  table.matrix td:first-child, table.matrix th:first-child { text-align: left; width: 38%; }
+  table.matrix .grp td { background: var(--brand-soft); font-weight: 700; text-align: left; color: var(--brand); }
+  .y { color: #15803d; font-weight: 700; } .o { color: #1d4ed8; font-weight: 600; } .a { color: #7c3aed; font-weight: 700; } .n { color: #cbd5e1; }
+  table.matrix th.c-admin { color: #5b21b6; } table.matrix th.c-student { color: #1e40af; } table.matrix th.c-faculty { color: #065f46; } table.matrix th.c-staff { color: #92400e; }
+
+  .endpoint-list { font-size: 9pt; margin: 0; padding: 0; list-style: none; }
+  .endpoint-list li { padding: 0.8mm 0; border-bottom: 1px dotted var(--line); }
+  .endpoint-list .mono { font-size: 8.3pt; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <div class="band">
+    <div class="kicker">CodeForge '26 · CampusOS</div>
+    <h1>CampusOS API<br>Flow Guide</h1>
+    <div class="sub">Who's who, which API does what, and in what order to call them, explained with pictures.</div>
+  </div>
+
+  <div>
+    <h2 style="margin-top:0">What this guide is</h2>
+    <p>This guide explains <b>how CampusOS fits together</b>: who the users are, who creates whom, and how each feature works from start to finish, including the ★ bonus APIs. If you have never called an API before, start at chapter 1.</p>
+    <p>It goes with the <b>CampusOS API Guide</b> (<code>api-cookbook.pdf</code>). This guide shows <i>how</i> the pieces connect. The cookbook lists <i>every field, limit and error code</i>. When you see <span class="see">→ Cookbook §4</span>, open that section of the cookbook for the exact details.</p>
+  </div>
+
+  <div>
+    <h3>Contents</h3>
+    <ol class="toc">
+      <li>APIs in two minutes</li>
+      <li>The big picture</li>
+      <li>Who's who: the actor hierarchy</li>
+      <li>Accounts and login</li>
+      <li>Set-up order: do this first</li>
+      <li>Who can do what (permission map)</li>
+      <li>FindIt: Lost &amp; Found</li>
+      <li>Notice Hub: campus notices</li>
+      <li>DocDesk: document requests</li>
+      <li>FixIt: maintenance tickets</li>
+      <li>The bonus round map</li>
+      <li>Patterns you will use everywhere</li>
+      <li>When things go wrong</li>
+      <li>Cheat sheet by role</li>
+      <li>One student's day, end to end</li>
+      <li>Glossary</li>
+    </ol>
+  </div>
+
+  <div>
+    <h3>How to read the diagrams</h3>
+    <div class="legend">
+      <div><span class="sw" style="background:var(--admin-soft);border-color:var(--admin)"></span>Admin (one per team)</div>
+      <div><span class="sw" style="background:var(--student-soft);border-color:var(--student)"></span>Student</div>
+      <div><span class="sw" style="background:var(--faculty-soft);border-color:var(--faculty)"></span>Faculty</div>
+      <div><span class="sw" style="background:var(--staff-soft);border-color:var(--staff)"></span>Office staff (incl. Student Affairs, Campus Maintenance)</div>
+      <div><span class="sw" style="background:var(--bonus-soft);border-color:var(--bonus);border-style:dashed"></span>★ Bonus API: optional, extra marks</div>
+      <div><span class="sw" style="background:var(--brand-soft);border-color:var(--brand)"></span>The CampusOS API / a step</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 1. APIs ============================ -->
+<section class="chapter">
+  <h1><span class="num">1</span>APIs in two minutes</h1>
+  <p class="lead">An API is a <b>waiter</b> between your app and the data. Your app never goes into the kitchen (the database). It places an order, and the waiter brings back a result.</p>
+
+  <figure><div class="mmd" data-d="restaurant"></div>
+    <figcaption>Your frontend sends a request. The API checks it, talks to the database and sends back a response.</figcaption></figure>
+
+  <h2>Every request has four parts</h2>
+  <div class="anatomy">
+    <div class="k">1. Method</div><div class="v">POST   <em>(the verb: what you want to do)</em></div>
+    <div class="k">2. URL</div><div class="v">{baseUrl}/api/v1/findit/posts/FND-82067-46fa/claims   <em>(the address: what you want to do it to)</em></div>
+    <div class="k">3. Headers</div><div class="v">Authorization: Bearer eyJhbGciOi...   <em>(your ID card, from login)</em>
+Content-Type: application/json</div>
+    <div class="k" style="border-bottom:0">4. Body</div><div class="v" style="border-bottom:0">{ "message": "My name is written under the lid" }   <em>(the details of your order)</em></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h3>The five methods (verbs)</h3>
+      <table>
+        <tr><th>Method</th><th>Means</th><th>Example</th></tr>
+        <tr><td><span class="tag t-get">GET</span></td><td>Read, never changes anything</td><td>List notices</td></tr>
+        <tr><td><span class="tag t-post">POST</span></td><td>Create something new / do an action</td><td>Raise a ticket</td></tr>
+        <tr><td><span class="tag t-patch">PATCH</span></td><td>Change <i>some</i> fields</td><td>Fix a typo in a title</td></tr>
+        <tr><td><span class="tag t-put">PUT</span></td><td>Set / replace one thing</td><td>Set the turnaround time</td></tr>
+        <tr><td><span class="tag t-delete">DELETE</span></td><td>Remove</td><td>Withdraw a claim</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Every response has a status code</h3>
+      <table>
+        <tr><th>Code</th><th>In plain words</th></tr>
+        <tr><td><b class="y">2xx</b> (200, 201)</td><td>It worked. The data is in the body.</td></tr>
+        <tr><td><b style="color:#b45309">4xx</b> (400–429)</td><td>Something is wrong with <i>your</i> request: missing token, wrong field, not allowed. Read <code>error.code</code>.</td></tr>
+        <tr><td><b class="n" style="color:var(--bad)">5xx</b> (500–504)</td><td>Problem on the server side. Wait and retry.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="keep"><h2>JSON body or form-data?</h2>
+  <figure><div class="mmd" data-d="jsonform"></div>
+    <figcaption>Endpoints that take a file (photo, PDF, attachment) use form-data. Everything else uses JSON. <span class="see">→ Cookbook §2</span></figcaption></figure></div>
+</section>
+
+<!-- ============================ 2. BIG PICTURE ============================ -->
+<section class="chapter">
+  <h1><span class="num">2</span>The big picture</h1>
+  <p class="lead">There is one shared CampusOS API for the whole hackathon. Each team builds a frontend that talks to it. Each team only ever sees its own institution's data.</p>
+
+  <figure><div class="mmd" data-d="arch"></div>
+    <figcaption>One API, one database, many teams. The organisers set up every team in <code>config.json</code>.</figcaption></figure>
+
+  <div class="keep"><h2>Your team = one institution</h2>
+  <p>Every team is a separate "college" with its <b>own email domain</b>. Every account in your team ends with your domain, for example <code>asha@team1.com</code>. The API reads the domain to work out which institution you belong to.</p>
+  <figure><div class="mmd" data-d="isolation"></div>
+    <figcaption>Teams are separated by email domain. Team 1 can never read, change or delete team 2's users, notices, tickets or requests.</figcaption></figure></div>
+
+  <h2>The four feature modules</h2>
+  <div class="grid4">
+    <div class="card"><h4>FindIt</h4><div class="small">Lost &amp; found. Office staff post items they found, owners claim them.</div><div class="see">→ Ch. 7 · Cookbook §4</div></div>
+    <div class="card"><h4>Notice Hub</h4><div class="small">Campus notices. Readers ask doubts, the publisher answers.</div><div class="see">→ Ch. 8 · Cookbook §5</div></div>
+    <div class="card"><h4>DocDesk</h4><div class="small">Request certificates. Student Affairs answers.</div><div class="see">→ Ch. 9 · Cookbook §6</div></div>
+    <div class="card"><h4>FixIt</h4><div class="small">Maintenance tickets. Campus Maintenance fixes them.</div><div class="see">→ Ch. 10 · Cookbook §7</div></div>
+  </div>
+  <p class="small" style="margin-top:3mm">All four modules share the same accounts and login (chapter 4). Base URLs: <code>/api/v1/findit</code>, <code>/api/v1/noticehub</code>, <code>/api/v1/docdesk</code>, <code>/api/v1/fixit</code>.</p>
+</section>
+
+<!-- ============================ 3. HIERARCHY ============================ -->
+<section class="chapter">
+  <h1><span class="num">3</span>Who's who: the actor hierarchy</h1>
+  <p class="lead">There are four kinds of users, called <b>roles</b>. The organisers create the admin. The admin creates everyone else. Office staff in two special departments get extra powers.</p>
+
+  <figure><div class="mmd" data-d="hierarchy"></div>
+    <figcaption>The chain of creation. An arrow means "creates". Nobody can create an account for themselves.</figcaption></figure>
+
+  <h2>What each role is, and what we store about them</h2>
+  <div class="grid2">
+    <div class="card admin"><h4>Admin <span class="tag t-admin">admin</span></h4>
+      <ul><li>One per team, e.g. <code>admin@team1.com</code></li>
+        <li>Created from <code>config.json</code> by the organisers</li>
+        <li>Creates, edits and deletes all other users, and can see their OTPs</li>
+        <li>Fields: name, email_id, phone_number</li></ul></div>
+    <div class="card student"><h4>Student <span class="tag t-student">student</span></h4>
+      <ul><li>The main users of every module</li>
+        <li>Fields: name, <b>usn</b>, <b>dept</b>, email_id, phone_number</li>
+        <li>USN is unique inside your team and stored in UPPERCASE</li></ul></div>
+    <div class="card faculty"><h4>Faculty <span class="tag t-faculty">faculty</span></h4>
+      <ul><li>Teachers: post notices, answer doubts, raise tickets, request documents</li>
+        <li>Fields: name, <b>designation</b>, email_id, phone_number</li></ul></div>
+    <div class="card staff"><h4>Office staff <span class="tag t-staff">office_staff</span></h4>
+      <ul><li>Post found items and notices. Their <b>dept</b> can unlock extra powers (below)</li>
+        <li>Fields: name, <b>dept</b>, <b>designation</b>, email_id, phone_number</li></ul></div>
+  </div>
+
+  <h2>Office staff departments that unlock extra powers</h2>
+  <table>
+    <tr><th>Office staff with <code>dept</code> =</th><th>Runs</th><th>Can do that others can't</th></tr>
+    <tr><td><b>Student Affairs</b></td><td>DocDesk</td><td>See everyone's document requests, answer them, ★ manage document types, ★ set turnaround times</td></tr>
+    <tr><td><b>Campus Maintenance</b></td><td>FixIt</td><td>See everyone's tickets, post progress, resolve, ★ manage issue types, ★ set turnaround times</td></tr>
+    <tr><td>Anything else (Accounts, Library…)</td><td>-</td><td>Normal office staff: post found items, post notices</td></tr>
+  </table>
+  <div class="callout"><b>Spelling matters.</b> The API looks for these two department names. Case doesn't matter, and a trailing "dept" is ignored, so <code>student affairs</code> and <code>Student Affairs Dept</code> both work. <code>StudentAffairs</code> does <b>not</b> work: that user gets <code>403 FORBIDDEN</code> in DocDesk.</div>
+</section>
+
+<section>
+  <div class="keep"><h2>How your app decides what to show</h2>
+  <p>After login, the response contains a <code>profile</code>. Use <code>profile.role</code>, and <code>profile.dept</code> for office staff, to pick which screens and buttons each user sees.</p>
+  <figure><div class="mmd" data-d="routing"></div>
+    <figcaption>Hide buttons the user can't use. The API still checks every call, so a hidden button is about a clean UI, not security.</figcaption></figure></div>
+</section>
+
+<!-- ============================ 4. ACCOUNTS ============================ -->
+<section class="chapter">
+  <h1><span class="num">4</span>Accounts and login</h1>
+  <p class="lead">Logging in means swapping your <b>email + OTP</b> for a <b>token</b>. The token is your ID card for the next 12 hours. Send it with every other call.</p>
+
+  <div class="keep"><h2>Who creates whom, step by step</h2>
+  <figure><div class="mmd" data-d="createSeq"></div>
+    <figcaption>The admin logs in, creates users and shares the OTP with them. Each user then logs in. <span class="see">→ Cookbook §3</span></figcaption></figure></div>
+
+  <div class="callout"><b>One OTP per team.</b> Your team has <b>one</b> OTP, given to you with the admin email. The admin and every user in your team log in with that same OTP, each with their <b>own email</b>. The <code>otp</code> field in the create-user response and in the admin's user list shows this team OTP.</div>
+</section>
+
+<section>
+  <div class="keep"><h2>Which login endpoint?</h2>
+  <figure><div class="mmd" data-d="loginDecision"></div>
+    <figcaption>Two login endpoints: one for the admin, one for everybody else.</figcaption></figure></div>
+
+  <div class="keep"><h2>The token's life</h2>
+  <figure><div class="mmd" data-d="tokenLife"></div>
+    <figcaption><code>expires_in</code> is in seconds (43200 = 12 hours). When you get <code>401 TOKEN_EXPIRED</code>, send the user back to the login screen.</figcaption></figure></div>
+  <pre class="code"><span class="c">// Send the token on every call except login and health</span>
+Authorization: Bearer <span class="s">eyJhbGciOiJIUzI1NiIs...</span></pre>
+</section>
+
+<section>
+  <div class="keep"><h2>Admin: managing users</h2>
+  <p>Only the admin can create, change or delete users. Users can <b>read</b> their own profile with <code>GET /api/v1/users/me</code> but can't change it.</p>
+  <figure><div class="mmd" data-d="userLife"></div>
+    <figcaption>A user account's life. Every arrow is an admin-only call.</figcaption></figure></div>
+
+  <table>
+    <tr><th>Method</th><th>Endpoint</th><th>What it does</th></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td class="mono">/api/v1/admin/users</td><td>Create a user. The <code>role</code> field decides which other fields are required.</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td class="mono">/api/v1/admin/users?role=&amp;limit=&amp;cursor=</td><td>List users (with OTP), filter by role, page with the cursor</td></tr>
+    <tr><td><span class="tag t-get">GET</span></td><td class="mono">/api/v1/admin/users/{email_id}</td><td>One user</td></tr>
+    <tr><td><span class="tag t-patch">PATCH</span></td><td class="mono">/api/v1/admin/users/{email_id}</td><td>Change some fields. The role can't change, and the fields must belong to the role.</td></tr>
+    <tr><td><span class="tag t-post">POST</span></td><td class="mono">/api/v1/admin/users/{email_id}/regenerate-otp</td><td>Returns the user with the team OTP (the OTP is shared, so it doesn't change)</td></tr>
+    <tr><td><span class="tag t-delete">DELETE</span></td><td class="mono">/api/v1/admin/users/{email_id}</td><td>Delete the user. Their token stops working.</td></tr>
+  </table>
+  <div class="callout warn"><b>Rules the API enforces</b>
+    The new user's email must use <b>your</b> domain (otherwise <code>422 EMAIL_DOMAIN_MISMATCH</code>). The same email or USN twice gives <code>409 ALREADY_EXISTS</code>. Unknown fields, such as <code>usn</code> for faculty, give <code>422</code>. Phone numbers have 10–15 digits.</div>
+</section>
+
+<!-- ============================ 5. SET-UP ORDER ============================ -->
+<section class="chapter">
+  <h1><span class="num">5</span>Set-up order: do this first</h1>
+  <p class="lead">Many features need data that someone else creates first. A ticket needs an issue type, and a document request needs a document type. Follow this order once at the start, and every flow in this guide will work.</p>
+  <figure><div class="mmd" data-d="setup"></div>
+    <figcaption>Steps 4 and 5 use ★ bonus APIs, but run them even if you don't build those screens. Without them there are no types to pick. Use <code>{baseUrl}/docs</code> or Postman for quick one-off calls.</figcaption></figure>
+
+  <div class="callout"><b>Tip: keep four tokens handy.</b> Testing a flow usually needs two people, for example a student raises a ticket and Campus Maintenance resolves it. Save a token for each test user and switch between them.</div>
+</section>
+
+<!-- ============================ 6. PERMISSION MAP ============================ -->
+<section class="chapter">
+  <h1><span class="num">6</span>Who can do what</h1>
+  <p class="lead">One table for all four modules. <b>SA</b> = Student Affairs office staff, <b>CM</b> = Campus Maintenance office staff. SA and CM are office staff, so they can also do everything in the "Office staff" column.</p>
+  <p class="small"><span class="y">✓</span> allowed &nbsp; <span class="o">own</span> only their own records &nbsp; <span class="a">all</span> everyone's records &nbsp; <span class="n">—</span> not allowed &nbsp; ★ bonus</p>
+  <table class="matrix">
+    <tr><th>Action</th><th class="c-admin">Admin</th><th class="c-student">Student</th><th class="c-faculty">Faculty</th><th class="c-staff">Office staff</th><th class="c-staff">SA</th><th class="c-staff">CM</th></tr>
+    <tr class="grp"><td colspan="7">FindIt</td></tr>
+    <tr><td>Post / edit / archive / delete found items</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>Browse found items</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>Claim an item, withdraw own claim</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>See claims on a post</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="a">all</td><td class="a">all</td><td class="a">all</td></tr>
+    <tr><td>Resolve a post (hand over the item)</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>★ Report a lost item</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>★ See lost requests</td><td class="n">—</td><td class="o">own</td><td class="o">own</td><td class="a">all</td><td class="a">all</td><td class="a">all</td></tr>
+    <tr class="grp"><td colspan="7">Notice Hub</td></tr>
+    <tr><td>Post a notice</td><td class="y">✓</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>Read notices, download attachments</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>Edit / pin / schedule / archive a notice</td><td class="o">own</td><td class="n">—</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="o">own</td></tr>
+    <tr><td>Delete a notice</td><td class="a">all</td><td class="n">—</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="o">own</td></tr>
+    <tr><td>Ask a doubt / edit own doubt until answered</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>Respond to a doubt</td><td class="a">all</td><td class="n">—</td><td class="o">own notices</td><td class="o">own notices</td><td class="o">own notices</td><td class="o">own notices</td></tr>
+    <tr><td>★ See scheduled notices</td><td class="a">all</td><td class="n">—</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="o">own</td></tr>
+    <tr class="grp"><td colspan="7">DocDesk</td></tr>
+    <tr><td>Request a document, edit / withdraw while pending</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>See requests</td><td class="a">all</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="a">all</td><td class="o">own</td></tr>
+    <tr><td>Answer / change / withdraw an answer</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
+    <tr><td>Acknowledge own answered request</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>★ See document types</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>★ Manage document types, set turnaround time</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td><td class="n">—</td></tr>
+    <tr><td>★ Download the answer's document / filled form</td><td class="a">all</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="a">all</td><td class="o">own</td></tr>
+    <tr><td>★ Upload the filled-in form</td><td class="n">—</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="o">own</td></tr>
+    <tr class="grp"><td colspan="7">FixIt</td></tr>
+    <tr><td>Raise a ticket, edit / withdraw own while open</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>See tickets</td><td class="a">all</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="o">own</td><td class="a">all</td></tr>
+    <tr><td>Update status with a note (progress, resolve, reopen)</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td></tr>
+    <tr><td>Delete any ticket</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td></tr>
+    <tr><td>Acknowledge own resolved ticket</td><td class="n">—</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>★ See issue types</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td>★ Manage issue types, set turnaround time</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✓</td></tr>
+  </table>
+  <p class="small">The admin can only <b>read</b> in DocDesk. In FixIt, the admin can read and delete tickets.</p>
+</section>
+
+<!-- ============================ 7. FINDIT ============================ -->
+<section class="chapter">
+  <h1><span class="num">7</span>FindIt: Lost &amp; Found</h1>
+  <p class="lead">Office staff post things they found. The owner proves it's theirs with a claim. Staff pick the right claim and hand the item over. <span class="see">→ Cookbook §4</span></p>
+
+  <div class="keep"><h2>Core flow</h2>
+  <figure><div class="mmd" data-d="finditSeq"></div>
+    <figcaption>All paths start with <code>/api/v1/findit</code>. One claim per person per post.</figcaption></figure></div>
+</section>
+
+<section>
+  <div class="keep"><h2>Life of a found post</h2>
+  <figure><div class="mmd" data-d="finditPost"></div>
+    <figcaption>Resolving archives the post and decides every claim on it. Undoing the resolution puts everything back to pending.</figcaption></figure></div>
+
+  <div class="keep"><h2>Life of a claim</h2>
+  <figure><div class="mmd" data-d="finditClaim"></div>
+    <figcaption>A claimant can withdraw only while the claim is pending (otherwise <code>409 CLAIM_LOCKED</code>).</figcaption></figure></div>
+</section>
+
+<section>
+  <div class="bonus-box">
+    <div class="keep"><h3>★ Bonus: lost requests</h3>
+    <p>The other direction: someone reports what they <b>lost</b>, and office staff see every report, so they know what to look out for.</p>
+    <figure class="plain"><div class="mmd" data-d="lostSeq"></div></figure></div>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>Who</th></tr>
+      <tr><td><span class="tag t-post">POST</span></td><td class="mono">/lost-requests</td><td>student, faculty, office staff</td></tr>
+      <tr><td><span class="tag t-get">GET</span></td><td class="mono">/lost-requests?status=&amp;mine=</td><td>office staff: everyone's, others: own</td></tr>
+      <tr><td><span class="tag t-patch">PATCH</span> / <span class="tag t-delete">DELETE</span></td><td class="mono">/lost-requests/{request_id}</td><td>owner (PATCH <code>status: "archived"</code> = "I found it")</td></tr>
+    </table>
+  </div>
+
+  <div class="bonus-box">
+    <h3>★ Bonus: archive and reopen</h3>
+    <p>Hide a post without resolving it: <code>PATCH /posts/{post_id}</code> with form field <code>status=archived</code>, which also archives its claims. Bring it back with <code>status=active</code>. Show the archive with <code>GET /posts?status=archived</code>. A <b>resolved</b> post can't be reopened this way (<code>409 POST_RESOLVED</code>). Undo the resolution instead.</p>
+  </div>
+
+  <h2>Screens you could build</h2>
+  <table>
+    <tr><th>Screen</th><th>Who sees it</th><th>APIs</th></tr>
+    <tr><td>Found items gallery</td><td>everyone</td><td class="mono">GET /posts</td></tr>
+    <tr><td>Item page + "This is mine" button</td><td>everyone</td><td class="mono">GET /posts/{id} · POST /posts/{id}/claims</td></tr>
+    <tr><td>My claims</td><td>everyone</td><td class="mono">GET /claims/me · DELETE /claims/{id}</td></tr>
+    <tr><td>Post a found item (with photos)</td><td>office staff</td><td class="mono">POST /posts (form-data)</td></tr>
+    <tr><td>Claims review &amp; hand-over</td><td>office staff</td><td class="mono">GET /posts/{id}/claims · POST /posts/{id}/resolution</td></tr>
+    <tr><td>★ Report lost item / lost board</td><td>all users / office staff</td><td class="mono">POST /lost-requests · GET /lost-requests</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 8. NOTICE HUB ============================ -->
+<section class="chapter">
+  <h1><span class="num">8</span>Notice Hub: campus notices</h1>
+  <p class="lead">The admin, faculty and office staff publish notices. Readers ask <b>doubts</b>, and the publisher gives each doubt <b>one response</b>. <span class="see">→ Cookbook §5</span></p>
+
+  <div class="keep"><h2>Core flow</h2>
+  <figure><div class="mmd" data-d="noticeSeq"></div>
+    <figcaption>All paths start with <code>/api/v1/noticehub</code>. <code>answered=false</code> gives the publisher an "unanswered doubts" inbox.</figcaption></figure></div>
+
+  <div class="keep"><h2>Life of a doubt</h2>
+  <figure><div class="mmd" data-d="doubtLife"></div>
+    <figcaption>The asker can edit the question only while it is unanswered (<code>409 DOUBT_ANSWERED</code>). A second response gives <code>409 ALREADY_ANSWERED</code>. Use PATCH to change the first one.</figcaption></figure></div>
+</section>
+
+<section>
+  <div class="keep"><h2>Life of a notice (★ parts are bonus)</h2>
+  <figure><div class="mmd" data-d="noticeLife"></div>
+    <figcaption>Students never see a scheduled notice, and nobody can ask doubts on one. When <code>publish_at</code> arrives, it turns active automatically.</figcaption></figure></div>
+
+  <div class="bonus-box">
+    <h3>★ Bonus: schedule, pin, archive, attach</h3>
+    <table>
+      <tr><th>Feature</th><th>How</th><th>UI idea</th></tr>
+      <tr><td>Schedule</td><td><code>POST /notices</code> with <code>publish_at=2026-11-03T09:00:00</code> (IST if no timezone). See them with <code>GET /notices?status=scheduled</code></td><td>"Publish later" date picker, a "Scheduled" tab</td></tr>
+      <tr><td>Pin</td><td><code>pinned=true</code> on POST or PATCH, then <code>GET /notices?pinned=true</code></td><td>Banner of pinned notices at the top</td></tr>
+      <tr><td>Archive</td><td><code>PATCH /notices/{id}</code> with <code>status=archived</code> / <code>active</code></td><td>"Archive" tab. Still readable, takes no new doubts</td></tr>
+      <tr><td>Attachment</td><td>One PDF/JPEG/PNG file on POST/PATCH, <code>remove_attachment=true</code> to drop it, <code>GET /notices/{id}/attachment</code> to download</td><td>Paperclip icon + download button</td></tr>
+    </table>
+  </div>
+
+  <h2>Screens you could build</h2>
+  <table>
+    <tr><th>Screen</th><th>Who</th><th>APIs</th></tr>
+    <tr><td>Notice board</td><td>everyone</td><td class="mono">GET /notices (★ ?pinned=true for the banner)</td></tr>
+    <tr><td>Notice page + doubts thread</td><td>everyone</td><td class="mono">GET /notices/{id} · GET /notices/{id}/doubts · POST …/doubts</td></tr>
+    <tr><td>Compose notice</td><td>admin, faculty, office staff</td><td class="mono">POST /notices (form-data)</td></tr>
+    <tr><td>Publisher's inbox</td><td>publisher</td><td class="mono">GET /notices?mine=true · GET …/doubts?answered=false · POST /doubts/{id}/response</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 9. DOCDESK ============================ -->
+<section class="chapter">
+  <h1><span class="num">9</span>DocDesk: document requests</h1>
+  <p class="lead">Users request official documents, such as a bonafide certificate or a transcript. <b>Student Affairs</b> answers, sometimes with a form to fill in and send back. <span class="see">→ Cookbook §6</span></p>
+
+  <div class="keep"><h2>The request's life</h2>
+  <figure><div class="mmd" data-d="docLife"></div>
+    <figcaption>The answer is free text, so it covers every outcome: "Ready, collect after 2pm", "Not issued: fee receipt missing", or "Fill in the attached form".</figcaption></figure></div>
+
+  <table>
+    <tr><th>Status</th><th>Requester can</th><th>Student Affairs can</th></tr>
+    <tr><td><b>pending</b></td><td>edit, withdraw</td><td>★ set turnaround time, answer</td></tr>
+    <tr><td><b>answered</b></td><td>★ download the document, ★ upload the filled form, acknowledge</td><td>change the answer, withdraw the answer</td></tr>
+    <tr><td><b>acknowledged</b></td><td>view, download</td><td>view, download</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="keep"><h2>Full flow, core and ★ bonus together</h2>
+  <figure><div class="mmd" data-d="docSeq"></div>
+    <figcaption>All paths start with <code>/api/v1/docdesk</code>. Dashed-box steps are bonus. Without them, the flow is: request → answer → acknowledge.</figcaption></figure></div>
+</section>
+
+<section>
+  <div class="bonus-box">
+    <div class="keep"><h3>★ Bonus: turnaround time for many requests at once</h3>
+    <p><code>POST /requests/bulk-tat</code> with 1–100 <code>request_ids</code>, an <code>expected_by</code> date and an optional note. It is <b>all or nothing</b>:</p>
+    <figure class="plain"><div class="mmd" data-d="bulkTat"></div></figure></div>
+    <p class="small">UI idea: checkboxes on the pending list (<code>GET /requests?status=pending</code>), a date picker, and one "Set TAT" button.</p>
+  </div>
+
+  <div class="bonus-box">
+    <div class="keep"><h3>★ Bonus: the form round-trip</h3>
+    <figure class="plain"><div class="mmd" data-d="formTrip"></div></figure></div>
+    <p class="small">This only works on an <b>answered</b> request whose answer has a document. Otherwise you get <code>409 NOT_ANSWERED</code>, <code>NO_DOCUMENT</code> or <code>ALREADY_ACKNOWLEDGED</code>. Tip for the Student Affairs screen: a request with both <code>document</code> and <code>filled_form</code> has come back and is ready to check.</p>
+  </div>
+
+  <h2>Screens you could build</h2>
+  <table>
+    <tr><th>Screen</th><th>Who</th><th>APIs</th></tr>
+    <tr><td>Request a document (dropdown of types)</td><td>student, faculty, office staff</td><td class="mono">★ GET /doc-types · POST /requests</td></tr>
+    <tr><td>My requests + timeline</td><td>requester</td><td class="mono">GET /requests · GET /requests/{id} · POST …/acknowledge</td></tr>
+    <tr><td>Student Affairs queue</td><td>Student Affairs</td><td class="mono">GET /requests?status=pending · POST …/answer · ★ PUT …/tat</td></tr>
+    <tr><td>★ Document types manager</td><td>Student Affairs</td><td class="mono">POST / PATCH / DELETE /doc-types</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 10. FIXIT ============================ -->
+<section class="chapter">
+  <h1><span class="num">10</span>FixIt: maintenance tickets</h1>
+  <p class="lead">Anyone raises a ticket for a campus problem, like a broken fan or a leaking tap. <b>Campus Maintenance</b> posts progress and resolves it. The reporter confirms the fix. <span class="see">→ Cookbook §7</span></p>
+
+  <div class="keep"><h2>The ticket's life</h2>
+  <figure><div class="mmd" data-d="ticketLife"></div>
+    <figcaption>Every status change by Campus Maintenance needs a short <code>note</code>, and the reporter sees it as the latest update.</figcaption></figure></div>
+
+  <table>
+    <tr><th>Status</th><th>Reporter can</th><th>Campus Maintenance can</th></tr>
+    <tr><td><b>open</b></td><td>edit, withdraw, change the photo</td><td>post a progress note, resolve, ★ set turnaround time</td></tr>
+    <tr><td><b>resolved</b></td><td>acknowledge</td><td>reopen it if it isn't really fixed</td></tr>
+    <tr><td><b>acknowledged</b></td><td>view</td><td>view, delete</td></tr>
+  </table>
+</section>
+
+<section>
+  <div class="keep"><h2>Full flow, core and ★ bonus together</h2>
+  <figure><div class="mmd" data-d="ticketSeq"></div>
+    <figcaption>All paths start with <code>/api/v1/fixit</code>. Status updates use <code>PUT /tickets/{id}/status</code> with <code>{"status": "open" | "resolved", "note": "..."}</code>.</figcaption></figure></div>
+
+  <div class="bonus-box">
+    <h3>★ Bonus: issue types and the overdue badge</h3>
+    <div class="grid2">
+      <div><b>Issue types</b>
+        <p class="small">Campus Maintenance manages them with <code>POST / PATCH / DELETE /issue-types</code>. Build the "Raise a ticket" dropdown from <code>GET /issue-types</code> instead of hard-coding it. New types then show up right away. Filter the board with <code>GET /tickets?issue_type_id=…</code>.</p></div>
+      <div><b>Turnaround time + overdue</b>
+        <p class="small"><code>PUT /tickets/{id}/tat</code> with <code>{"expected_by": "2026-11-05"}</code> (only while open). If the date passes and the ticket is still open, the ticket shows <code>"overdue": true</code>. Show a red badge for it.</p></div>
+    </div>
+  </div>
+
+  <h2>Screens you could build</h2>
+  <table>
+    <tr><th>Screen</th><th>Who</th><th>APIs</th></tr>
+    <tr><td>Raise a ticket (with photo)</td><td>student, faculty, office staff</td><td class="mono">★ GET /issue-types · POST /tickets (form-data)</td></tr>
+    <tr><td>My tickets</td><td>reporter</td><td class="mono">GET /tickets · POST /tickets/{id}/acknowledge</td></tr>
+    <tr><td>Maintenance board</td><td>Campus Maintenance</td><td class="mono">GET /tickets?status=open · PUT …/status · ★ PUT …/tat</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 11. BONUS MAP ============================ -->
+<section class="chapter">
+  <h1><span class="num">11</span>★ The bonus round map</h1>
+  <p class="lead">Every module has <b>core APIs</b> (the must-have flow) and <b>★ bonus APIs</b> (extras for extra marks). Finish the core flow first, then add bonus features one at a time.</p>
+  <div class="grid2" style="margin-bottom:4mm">
+    <div class="card"><h4>FindIt</h4><div class="small"><b>Core:</b> post → claim → resolve</div><div style="margin-top:1.5mm"><span class="tag t-bonus">★ Lost requests</span> <span class="tag t-bonus">★ Archive / reopen</span></div></div>
+    <div class="card"><h4>Notice Hub</h4><div class="small"><b>Core:</b> post → doubt → response</div><div style="margin-top:1.5mm"><span class="tag t-bonus">★ Schedule</span> <span class="tag t-bonus">★ Pin</span> <span class="tag t-bonus">★ Archive</span> <span class="tag t-bonus">★ Attachment</span></div></div>
+    <div class="card"><h4>DocDesk</h4><div class="small"><b>Core:</b> request → answer → acknowledge</div><div style="margin-top:1.5mm"><span class="tag t-bonus">★ Doc types</span> <span class="tag t-bonus">★ TAT + bulk TAT</span> <span class="tag t-bonus">★ Document + filled form</span></div></div>
+    <div class="card"><h4>FixIt</h4><div class="small"><b>Core:</b> raise → progress → resolve → acknowledge</div><div style="margin-top:1.5mm"><span class="tag t-bonus">★ Issue types</span> <span class="tag t-bonus">★ TAT + overdue badge</span></div></div>
+  </div>
+
+  <table>
+    <tr><th>Module</th><th>★ Bonus feature</th><th>Key APIs</th><th>Needs first</th></tr>
+    <tr><td>FindIt</td><td>Lost requests</td><td class="mono">/lost-requests</td><td>Login only</td></tr>
+    <tr><td>FindIt</td><td>Archive / reopen posts</td><td class="mono">PATCH /posts/{id} status, GET /posts?status=archived</td><td>A found post</td></tr>
+    <tr><td>Notice Hub</td><td>Scheduled notices</td><td class="mono">publish_at, GET /notices?status=scheduled</td><td>Posting notices</td></tr>
+    <tr><td>Notice Hub</td><td>Pinning</td><td class="mono">pinned, GET /notices?pinned=true</td><td>Posting notices</td></tr>
+    <tr><td>Notice Hub</td><td>Archive / restore</td><td class="mono">PATCH /notices/{id} status</td><td>Posting notices</td></tr>
+    <tr><td>Notice Hub</td><td>Attachments</td><td class="mono">attachment file, GET /notices/{id}/attachment</td><td>Posting notices</td></tr>
+    <tr><td>DocDesk</td><td>Document types</td><td class="mono">/doc-types</td><td>A Student Affairs user</td></tr>
+    <tr><td>DocDesk</td><td>Turnaround time (one / bulk)</td><td class="mono">PUT /requests/{id}/tat, POST /requests/bulk-tat</td><td>Pending requests</td></tr>
+    <tr><td>DocDesk</td><td>Send a document, form round-trip</td><td class="mono">answer document, /document, /filled-form</td><td>Answering requests</td></tr>
+    <tr><td>FixIt</td><td>Issue types (dynamic dropdown)</td><td class="mono">/issue-types</td><td>A Campus Maintenance user</td></tr>
+    <tr><td>FixIt</td><td>Turnaround time + overdue badge</td><td class="mono">PUT /tickets/{id}/tat, overdue</td><td>Open tickets</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 12. PATTERNS ============================ -->
+<section class="chapter">
+  <h1><span class="num">12</span>Patterns you will use everywhere</h1>
+
+  <div class="keep"><h2>Lists come in pages</h2>
+  <p>Every list returns <code>{"items": [...], "count": 25, "next_cursor": "..."}</code>, newest first. To get more, call again with <code>?cursor=</code> set to the <code>next_cursor</code> you received. Stop when <code>next_cursor</code> is <code>null</code>.</p>
+  <figure class="short"><div class="mmd" data-d="paging"></div>
+    <figcaption>Use this for "Load more" buttons and infinite scroll. <code>?limit=</code> can be 1–100 (default 25).</figcaption></figure></div>
+
+  <div class="grid2">
+    <div class="card"><h4>Editing with PATCH</h4>
+      <ul><li>Send <b>only</b> the fields you want to change</li>
+        <li>Empty body or unknown field → <code>422</code></li>
+        <li>Optional text can be cleared with <code>null</code> (JSON) or an empty value (form-data)</li>
+        <li>Remove a file with <code>remove_photo=true</code>, <code>remove_attachment=true</code>…</li></ul></div>
+    <div class="card"><h4>Files</h4>
+      <ul><li>Responses include a <code>url</code> for each file that <b>expires in about 15 minutes</b>. Good for <code>&lt;img src&gt;</code></li>
+        <li>For download buttons, use the module's download endpoint with the token. It always works</li>
+        <li>The file type is checked from its content, so renaming a file doesn't work</li></ul></div>
+    <div class="card"><h4>IDs</h4>
+      <ul><li>The API creates all IDs. The prefix tells you the type: <code>FND-</code> post, <code>CLM-</code> claim, <code>LST-</code> lost, <code>NTC-</code> notice, <code>DBT-</code> doubt, <code>DTY-</code> doc type, <code>DRQ-</code> request, <code>ITY-</code> issue type, <code>TKT-</code> ticket</li>
+        <li>Users are identified by <code>email_id</code></li></ul></div>
+    <div class="card"><h4>Dates and times</h4>
+      <ul><li>Dates are <code>YYYY-MM-DD</code></li>
+        <li>Responses give times in UTC (ending in <code>Z</code>). Convert to IST for display</li>
+        <li><code>publish_at</code> without a timezone is read as IST</li>
+        <li>Fields with no value are left out, so check before using them</li></ul></div>
+  </div>
+</section>
+
+<!-- ============================ 13. ERRORS ============================ -->
+<section class="chapter">
+  <h1><span class="num">13</span>When things go wrong</h1>
+  <p class="lead">Every error looks the same, so write one error handler and reuse it everywhere. Base your logic on <code>error.code</code>, not the message text.</p>
+<pre class="code">{
+  <span class="k">"error"</span>: {
+    <span class="k">"code"</span>: <span class="s">"VALIDATION_ERROR"</span>,             <span class="c">// use this in your if/else</span>
+    <span class="k">"message"</span>: <span class="s">"Request validation failed..."</span>, <span class="c">// safe to show to users</span>
+    <span class="k">"details"</span>: [ { <span class="k">"field"</span>: <span class="s">"otp"</span>, <span class="k">"message"</span>: <span class="s">"String should match pattern..."</span> } ]
+  },
+  <span class="k">"request_id"</span>: <span class="s">"6f1c..."</span>                     <span class="c">// quote this when asking organisers for help</span>
+}</pre>
+  <figure><div class="mmd" data-d="errors"></div>
+    <figcaption>One handler for every API call. The full list of codes is in <span class="see">→ Cookbook §8</span>.</figcaption></figure>
+
+  <table>
+    <tr><th>Code you'll see most</th><th>Usually means</th></tr>
+    <tr><td><code>422 VALIDATION_ERROR</code></td><td>A field is missing, misspelled or in the wrong format. <code>details</code> names the field.</td></tr>
+    <tr><td><code>401 INVALID_TOKEN</code></td><td>Forgot the <code>Authorization: Bearer …</code> header, or sent the token with quotes or extra spaces</td></tr>
+    <tr><td><code>403 FORBIDDEN</code></td><td>Right token, wrong role, for example a student trying to answer a DocDesk request</td></tr>
+    <tr><td><code>404 NOT_FOUND</code></td><td>Wrong ID, or the record belongs to someone else (you can't see others' records)</td></tr>
+    <tr><td><code>409 …</code></td><td>The record is in the wrong state for this action, for example acknowledging a ticket that isn't resolved</td></tr>
+    <tr><td><code>429 RATE_LIMITED</code></td><td>Too many calls (300 per minute per user) or too many wrong OTPs. Wait for <code>Retry-After</code> seconds</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 14. CHEAT SHEET ============================ -->
+<section class="chapter">
+  <h1><span class="num">14</span>Cheat sheet by role</h1>
+  <p class="lead">"I'm building screens for <i>this</i> user. Which endpoints do I need?" ★ = bonus.</p>
+  <div class="grid2">
+    <div class="card student"><h4>Student</h4>
+      <ul class="endpoint-list">
+        <li><span class="mono">POST /auth/login · GET /users/me</span></li>
+        <li>FindIt: <span class="mono">GET /posts · POST /posts/{id}/claims · GET /claims/me</span> · ★ <span class="mono">/lost-requests</span></li>
+        <li>Notice Hub: <span class="mono">GET /notices · POST /notices/{id}/doubts</span></li>
+        <li>DocDesk: <span class="mono">POST /requests · GET /requests · POST …/acknowledge</span> · ★ <span class="mono">GET /doc-types · PUT …/filled-form</span></li>
+        <li>FixIt: <span class="mono">POST /tickets · GET /tickets · POST …/acknowledge</span> · ★ <span class="mono">GET /issue-types</span></li>
+      </ul></div>
+    <div class="card faculty"><h4>Faculty</h4>
+      <ul class="endpoint-list">
+        <li>Everything a student can do (except having a USN), plus:</li>
+        <li>Notice Hub: <span class="mono">POST /notices · PATCH/DELETE own · POST /doubts/{id}/response</span></li>
+        <li>★ Schedule, pin, archive, attach on own notices</li>
+      </ul></div>
+    <div class="card staff"><h4>Office staff</h4>
+      <ul class="endpoint-list">
+        <li>Everything faculty can do, plus:</li>
+        <li>FindIt: <span class="mono">POST/PATCH/DELETE /posts · GET …/claims (all) · /resolution</span> · ★ see all lost requests</li>
+        <li><b>+ Student Affairs:</b> <span class="mono">GET /requests (all) · /answer</span> · ★ <span class="mono">/doc-types · /tat · /bulk-tat</span></li>
+        <li><b>+ Campus Maintenance:</b> <span class="mono">GET /tickets (all) · PUT …/status</span> · ★ <span class="mono">/issue-types · PUT …/tat</span></li>
+      </ul></div>
+    <div class="card admin"><h4>Admin</h4>
+      <ul class="endpoint-list">
+        <li><span class="mono">POST /auth/admin/login · GET /admin/me</span></li>
+        <li>Users: <span class="mono">POST/GET/PATCH/DELETE /admin/users</span></li>
+        <li>Notice Hub: post notices, delete any notice, answer any doubt</li>
+        <li>DocDesk: read all requests (read-only)</li>
+        <li>FixIt: read all tickets, delete any ticket</li>
+        <li>FindIt: browse and claim</li>
+      </ul></div>
+  </div>
+  <p class="small" style="margin-top:3mm">Module paths are relative to <code>/api/v1/findit</code>, <code>/api/v1/noticehub</code>, <code>/api/v1/docdesk</code> and <code>/api/v1/fixit</code>. Login paths are under <code>/api/v1</code>. Full table: <span class="see">→ Cookbook §10</span>.</p>
+</section>
+
+<!-- ============================ 15. STORY ============================ -->
+<section class="chapter">
+  <h1><span class="num">15</span>One student's day, end to end</h1>
+  <p class="lead">Follow Asha, a CSE student at team1.com, through all four modules. Each row is a real API call.</p>
+  <table><tr><th style="width:6%">#</th><th style="width:15%">Module</th><th>What Asha does</th><th style="width:34%">API call</th></tr>
+<tr><td><b>1</b></td><td><span class="tag t-admin">Login</span></td><td>Logs in with her email and the team OTP</td><td class="mono">POST /api/v1/auth/login</td></tr>
+<tr><td><b>2</b></td><td><span class="tag t-faculty">Notice Hub</span></td><td>Sees the pinned "Scholarship applications open" notice</td><td class="mono">GET /notices?pinned=true</td></tr>
+<tr><td><b>3</b></td><td><span class="tag t-faculty">Notice Hub</span></td><td>Asks "What is the last date?"</td><td class="mono">POST /notices/{id}/doubts</td></tr>
+<tr><td><b>4</b></td><td><span class="tag t-staff">DocDesk</span></td><td>Picks Bonafide Certificate from the dropdown</td><td class="mono">GET /doc-types</td></tr>
+<tr><td><b>5</b></td><td><span class="tag t-staff">DocDesk</span></td><td>Requests the certificate for the scholarship</td><td class="mono">POST /requests</td></tr>
+<tr><td><b>6</b></td><td><span class="tag t-delete">FixIt</span></td><td>Picks IT &amp; Network</td><td class="mono">GET /issue-types</td></tr>
+<tr><td><b>7</b></td><td><span class="tag t-delete">FixIt</span></td><td>Reports "Lab PC 12 won't boot" with a photo</td><td class="mono">POST /tickets</td></tr>
+<tr><td><b>8</b></td><td><span class="tag t-student">FindIt</span></td><td>Spots her lost ID card in the found items</td><td class="mono">GET /posts</td></tr>
+<tr><td><b>9</b></td><td><span class="tag t-student">FindIt</span></td><td>Claims it: "Photo + USN 1CF24CS001"</td><td class="mono">POST /posts/{id}/claims</td></tr>
+<tr><td></td><td colspan="3" class="small"><i>Later, the faculty member, Student Affairs, Campus Maintenance and office staff act on each one</i></td></tr>
+<tr><td><b>10</b></td><td><span class="tag t-faculty">Notice Hub</span></td><td>Reads the faculty member's answer to her doubt</td><td class="mono">GET /notices/{id}/doubts</td></tr>
+<tr><td><b>11</b></td><td><span class="tag t-staff">DocDesk</span></td><td>Sees "Ready, collect after 2pm" and confirms</td><td class="mono">GET /requests/{id} · POST …/acknowledge</td></tr>
+<tr><td><b>12</b></td><td><span class="tag t-delete">FixIt</span></td><td>Sees the ticket is resolved and confirms</td><td class="mono">GET /tickets/{id} · POST …/acknowledge</td></tr>
+<tr><td><b>13</b></td><td><span class="tag t-student">FindIt</span></td><td>Sees her claim is approved and collects the card</td><td class="mono">GET /claims/me</td></tr>
+</table><p class="small">Asha uses the same token for every call that day. Each module has its own staff on the other side of the API.</p>
+</section>
+
+<!-- ============================ 16. GLOSSARY ============================ -->
+<section class="chapter">
+  <h1><span class="num">16</span>Glossary</h1>
+  <table>
+    <tr><th style="width:28%">Word</th><th>Meaning</th></tr>
+    <tr><td>API</td><td>A set of URLs your app calls to read or change data. Here it is the CampusOS API.</td></tr>
+    <tr><td>Endpoint</td><td>One method + URL pair, e.g. <code>POST /api/v1/fixit/tickets</code>.</td></tr>
+    <tr><td>Base URL</td><td>The server address, given by the organisers. Every path in this guide goes after it.</td></tr>
+    <tr><td>Institution / domain</td><td>Your team. Every account ends with your team's email domain, e.g. <code>@team1.com</code>.</td></tr>
+    <tr><td>Role</td><td><code>admin</code>, <code>student</code>, <code>faculty</code> or <code>office_staff</code>. It decides what a user may do.</td></tr>
+    <tr><td>OTP</td><td>The fixed numeric code used to log in. One per team.</td></tr>
+    <tr><td>Token (JWT)</td><td>The long string you get from login. Send it as <code>Authorization: Bearer &lt;token&gt;</code>. It lasts 12 hours.</td></tr>
+    <tr><td>JSON</td><td>Text format for data: <code>{"name": "Asha"}</code>.</td></tr>
+    <tr><td>form-data</td><td>The body format used when uploading files (like an HTML form).</td></tr>
+    <tr><td>Status code</td><td>The number on every response: 2xx OK, 4xx your request has a problem, 5xx server problem.</td></tr>
+    <tr><td>Cursor</td><td>A bookmark for the next page of a list (<code>next_cursor</code>).</td></tr>
+    <tr><td>PATCH</td><td>Change only the fields you send.</td></tr>
+    <tr><td>TAT</td><td>Turnaround time: the date a request or ticket is expected to be done (<code>expected_by</code>).</td></tr>
+    <tr><td>Acknowledge</td><td>The requester or reporter confirms they got the document or the fix. This closes the record.</td></tr>
+    <tr><td>★ Bonus API</td><td>Optional extra feature. Finish the core flow first.</td></tr>
+    <tr><td><code>/docs</code></td><td>The live interactive API page at <code>{baseUrl}/docs</code>. Try any call in your browser.</td></tr>
+  </table>
+  <div class="callout warn"><b>Display user text safely.</b> The API stores text exactly as sent. Never insert it as raw HTML. React escapes it for you, so never use <code>dangerouslySetInnerHTML</code> for user text.</div>
+  <div class="callout"><b>Stuck?</b> 1) Read <code>error.code</code> and <code>details</code>. 2) Check the endpoint in the cookbook. 3) Try the same call in <code>{baseUrl}/docs</code>. 4) Ask the organisers and quote the <code>request_id</code>.</div>
+</section>
+
+<script src="node_modules/mermaid/dist/mermaid.min.js"></script>
+<script>
+const R = `
+classDef admin fill:#f3e8ff,stroke:#7c3aed,stroke-width:2px,color:#3b0764
+classDef student fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+classDef faculty fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#064e3b
+classDef staff fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+classDef org fill:#f1f5f9,stroke:#475569,stroke-width:2px,color:#0f172a
+classDef api fill:#eef2ff,stroke:#4338ca,stroke-width:2px,color:#1e1b4b
+classDef bonus fill:#fefce8,stroke:#ca8a04,stroke-width:2px,stroke-dasharray:6 3,color:#713f12
+classDef good fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d
+`;
+const D = {
+restaurant: `flowchart LR
+  A["Your frontend<br/>(the customer)"] -- "request<br/>GET /notices" --> B["CampusOS API<br/>(the waiter)"]
+  B -- "checks token,<br/>role, fields" --> C[("Database<br/>(the kitchen)")]
+  C -- "data" --> B
+  B -- "response<br/>200 + JSON" --> A
+  class A student
+  class B api
+  class C org
+${R}`,
+jsonform: `flowchart LR
+  Q{"Does the endpoint<br/>take a file?"} -- "No" --> J["<b>JSON</b><br/>Content-Type: application/json<br/>{ &quot;title&quot;: &quot;Fan broken&quot; }"]
+  Q -- "Yes (photo, PDF…)" --> F["<b>form-data</b><br/>fields + file in one request<br/>booleans as text: true / false"]
+  F --- E["e.g. POST /findit/posts<br/>POST /noticehub/notices<br/>POST /fixit/tickets"]
+  class Q api
+  class J good
+  class F staff
+  class E org
+${R}`,
+arch: `flowchart LR
+  subgraph T["40 team frontends"]
+    direction TB
+    T1["Team 1 app"]
+    T2["Team 2 app"]
+    T3["… Team 40 app"]
+  end
+  CFG[/"config.json<br/>teams, domains,<br/>admins, OTPs"/] -. "read at start" .-> API
+  T1 & T2 & T3 -- "HTTPS + token" --> API["CampusOS API<br/>/api/v1/…"]
+  API --> DB[("Firestore<br/>database")]
+  API --> ST[("File storage<br/>photos, PDFs")]
+  class T1,T2,T3 student
+  class API api
+  class DB,ST,CFG org
+${R}`,
+isolation: `flowchart LR
+  subgraph A["team1.com"]
+    direction TB
+    A0["admin#64;team1.com"] --> A1["asha#64;team1.com"] & A2["meera#64;team1.com"]
+  end
+  subgraph B["team2.com"]
+    direction TB
+    B0["admin#64;team2.com"] --> B1["ravi#64;team2.com"] & B2["kiran#64;team2.com"]
+  end
+  subgraph C["team40.com"]
+    direction TB
+    C0["admin#64;team40.com"] --> C1["…"]
+  end
+  A ~~~ B ~~~ C
+  class A0,B0,C0 admin
+  class A1,B1,C1 student
+  class A2,B2 faculty
+${R}`,
+hierarchy: `flowchart TB
+  ORG["<b>Organisers</b><br/>write config.json"]
+  ADM["<b>Admin</b><br/>one per team<br/>e.g. admin of team1"]
+  STU["<b>Student</b><br/>name · usn · dept<br/>email · phone"]
+  FAC["<b>Faculty</b><br/>name · designation<br/>email · phone"]
+  STF["<b>Office staff</b><br/>name · dept · designation<br/>email · phone"]
+  SA["dept = <b>Student Affairs</b><br/>runs DocDesk"]
+  CM["dept = <b>Campus Maintenance</b><br/>runs FixIt"]
+  OT["dept = anything else<br/>Accounts, Library…"]
+  ORG -- "creates (config)" --> ADM
+  ADM -- "POST /admin/users" --> STU
+  ADM -- "POST /admin/users" --> FAC
+  ADM -- "POST /admin/users" --> STF
+  STF -.-> SA
+  STF -.-> CM
+  STF -.-> OT
+  class ORG org
+  class ADM admin
+  class STU student
+  class FAC faculty
+  class STF,SA,CM,OT staff
+${R}`,
+routing: `flowchart TB
+  L["Login response<br/>profile.role"] --> R{"role?"}
+  R -- "admin" --> AD["Admin console<br/>manage users · post notices<br/>read DocDesk + FixIt"]
+  R -- "student" --> S["Student screens<br/>browse · claim · ask doubts<br/>request docs · raise tickets"]
+  R -- "faculty" --> F["Student screens, and<br/>post notices, answer doubts"]
+  R -- "office_staff" --> D{"profile.dept?"}
+  D -- "Student Affairs" --> SA["Staff screens<br/>and the DocDesk desk"]
+  D -- "Campus Maintenance" --> CM["Staff screens<br/>and the FixIt board"]
+  D -- "other" --> OS["Staff screens<br/>post found items, notices"]
+  class L,R,D api
+  class AD admin
+  class S student
+  class F faculty
+  class SA,CM,OS staff
+${R}`,
+createSeq: `sequenceDiagram
+  autonumber
+  participant O as Organisers
+  participant AD as Admin
+  participant API as CampusOS API
+  participant U as New user
+  O->>AD: admin email + team OTP
+  AD->>API: POST /auth/admin/login {email_id, otp}
+  API-->>AD: 200 access_token (admin)
+  AD->>API: POST /admin/users {role: student, name, usn, ...}
+  API-->>AD: 201 user + otp
+  AD->>U: shares email + otp
+  U->>API: POST /auth/login {email_id, otp}
+  API-->>U: 200 access_token + profile
+  U->>API: GET /users/me (Bearer token)
+  API-->>U: 200 my profile (read-only)`,
+loginDecision: `flowchart TB
+  S(["email + OTP"]) --> Q{"Is it the<br/>admin email?"}
+  Q -- "yes" --> A["POST /api/v1/auth/admin/login"]
+  Q -- "no" --> U["POST /api/v1/auth/login"]
+  A & U --> R{"Response"}
+  R -- "200" --> OK["Save access_token<br/>+ profile"]
+  R -- "401 INVALID_CREDENTIALS" --> E1["Wrong email or OTP"]
+  R -- "400 UNKNOWN_INSTITUTION" --> E2["Email domain isn't<br/>a registered team"]
+  R -- "400 USE_ADMIN_LOGIN" --> E3["Admin used the<br/>user login"]
+  R -- "429 RATE_LIMITED" --> E4["Too many wrong tries:<br/>wait Retry-After seconds"]
+  class S,Q,R api
+  class A admin
+  class U student
+  class OK good
+  class E1,E2,E3,E4 bad
+${R}`,
+tokenLife: `flowchart LR
+  A(["Logged out"]) -- "login<br/>email + OTP" --> B(["Has a token<br/>sends it on every call"])
+  B -- "12 hours pass" --> C(["Expired"])
+  C -- "API answers<br/>401 TOKEN_EXPIRED" --> A
+  B -- "logout, or the admin<br/>deletes the user" --> A
+  class A org
+  class B good
+  class C bad
+${R}`,
+userLife: `flowchart LR
+  N(["No account"]) -- "POST /admin/users" --> A(["Active user<br/>logs in, reads GET /users/me<br/>admin can PATCH details"])
+  A -- "DELETE /admin/users/{email_id}" --> G(["Deleted<br/>token stops working"])
+  class N org
+  class A good
+  class G bad
+${R}`,
+setup: `flowchart TB
+  S1["<b>1.</b> Admin logs in<br/>POST /auth/admin/login"]
+  S2["<b>2.</b> Admin creates test users<br/>POST /admin/users × 4"]
+  U1["student"]
+  U2["faculty"]
+  U3["office staff<br/>dept = Student Affairs"]
+  U4["office staff<br/>dept = Campus Maintenance"]
+  S3["<b>3.</b> Log each user in<br/>POST /auth/login, keep 4 tokens"]
+  S4["<b>4.</b> ★ Student Affairs creates document types<br/>POST /docdesk/doc-types"]
+  S5["<b>5.</b> ★ Campus Maintenance creates issue types<br/>POST /fixit/issue-types"]
+  S6["<b>6.</b> Build and test your module's flows<br/>(chapters 7–10)"]
+  S1 --> S2 --> U1 & U2 & U3 & U4 --> S3 --> S4 --> S5 --> S6
+  class S1 admin
+  class S2 admin
+  class U1 student
+  class U2 faculty
+  class U3,U4 staff
+  class S3 api
+  class S4,S5 bonus
+  class S6 good
+${R}`,
+finditSeq: `sequenceDiagram
+  autonumber
+  participant ST as Office staff
+  participant API as FindIt API
+  participant A as Asha (owner)
+  participant B as Another claimant
+  ST->>API: POST /posts (form-data: title, location, images)
+  API-->>ST: 201 post FND-… (active)
+  A->>API: GET /posts
+  A->>API: POST /posts/{post_id}/claims {message: proof}
+  API-->>A: 201 claim CLM-… (pending)
+  B->>API: POST /posts/{post_id}/claims {message}
+  ST->>API: GET /posts/{post_id}/claims
+  API-->>ST: every claim on the post
+  ST->>API: POST /posts/{post_id}/resolution {claim_id: Asha's}
+  API-->>ST: 201 post archived, resolved: true
+  Note over A,B: Asha's claim → approved · other claim → rejected
+  A->>API: GET /posts/{post_id}/resolution
+  API-->>A: who resolved it, the note`,
+finditPost: `flowchart LR
+  S(("start")) -- "POST /posts" --> A(["<b>active</b><br/>takes claims"])
+  A -- "POST /resolution<br/>pick a claim" --> R(["<b>resolved</b><br/>archived, resolved: true<br/>PATCH resolution = pick another"])
+  R -- "DELETE /resolution<br/>(undo)" --> A
+  A -- "★ PATCH status=archived" --> X(["<b>archived</b><br/>not resolved"])
+  X -- "★ PATCH status=active" --> A
+  A -- "DELETE /posts/{id}<br/>(no pending claims)" --> D(["deleted"])
+  class S org
+  class A good
+  class R api
+  class X bonus
+  class D bad
+${R}`,
+finditClaim: `flowchart LR
+  S(("start")) -- "POST /posts/{id}/claims" --> P(["<b>pending</b>"])
+  P -- "post resolved<br/>with this claim" --> AP(["<b>approved</b>"])
+  P -- "post resolved<br/>with another claim" --> RJ(["<b>rejected</b>"])
+  P -- "claimant<br/>DELETE /claims/{id}" --> W(["withdrawn"])
+  AP -. "resolution undone" .-> P
+  RJ -. "resolution undone" .-> P
+  class S org
+  class P api
+  class AP good
+  class RJ,W bad
+${R}`,
+lostSeq: `sequenceDiagram
+  participant A as Student
+  participant API as FindIt API
+  participant ST as Office staff
+  A->>API: ★ POST /lost-requests {title: Black umbrella, location_lost}
+  API-->>A: 201 LST-… (active)
+  ST->>API: ★ GET /lost-requests (sees everyone's)
+  Note over ST: finds the umbrella later
+  ST->>API: POST /posts (found item)
+  A->>API: POST /posts/{id}/claims
+  A->>API: ★ PATCH /lost-requests/{id} {status: archived}`,
+noticeSeq: `sequenceDiagram
+  autonumber
+  participant F as Faculty (publisher)
+  participant API as Notice Hub API
+  participant S as Student
+  F->>API: POST /notices (form-data: title, body, ★ pinned, publish_at, attachment)
+  API-->>F: 201 notice NTC-… (active)
+  S->>API: GET /notices
+  S->>API: GET /notices/{notice_id}
+  S->>API: POST /notices/{notice_id}/doubts {question}
+  API-->>S: 201 doubt DBT-… (answered: false)
+  F->>API: GET /notices/{notice_id}/doubts?answered=false
+  F->>API: POST /doubts/{doubt_id}/response {message}
+  API-->>F: 201 doubt with response
+  S->>API: GET /notices/{notice_id}/doubts
+  API-->>S: doubt + response (answered: true)`,
+doubtLife: `flowchart LR
+  S(("start")) -- "POST /notices/{id}/doubts" --> U(["<b>unanswered</b><br/>asker can PATCH"])
+  U -- "POST /doubts/{id}/response" --> A(["<b>answered</b><br/>responder can PATCH"])
+  A -- "DELETE response" --> U
+  U -- "DELETE doubt" --> D(["deleted"])
+  A -- "DELETE doubt" --> D
+  class S org
+  class U api
+  class A good
+  class D bad
+${R}`,
+noticeLife: `flowchart LR
+  S(("start")) -- "POST /notices" --> A(["<b>active</b><br/>everyone sees it,<br/>takes doubts"])
+  S -- "★ POST with a future<br/>publish_at" --> SC(["<b>scheduled</b><br/>hidden from students<br/>★ PATCH publish_at"])
+  SC -- "publish_at arrives<br/>(automatic)" --> A
+  A -- "★ PATCH status=archived" --> AR(["<b>archived</b><br/>readable,<br/>no new doubts"])
+  AR -- "★ PATCH status=active" --> A
+  A -. "DELETE" .-> D(["deleted"])
+  SC -. "DELETE (cancel)" .-> D
+  AR -. "DELETE" .-> D
+  class S org
+  class A good
+  class SC,AR bonus
+  class D bad
+${R}`,
+docLife: `flowchart LR
+  S(("start")) -- "POST /requests" --> P(["<b>pending</b><br/>requester can PATCH<br/>★ SA sets TAT"])
+  P -- "SA POST /answer" --> A(["<b>answered</b><br/>SA can PATCH the answer<br/>★ filled-form round-trip"])
+  A -- "SA DELETE /answer" --> P
+  A -- "requester<br/>POST /acknowledge" --> K(["<b>acknowledged</b><br/>closed"])
+  P -- "requester DELETE<br/>(withdraw)" --> W(["withdrawn"])
+  class S org
+  class P api
+  class A staff
+  class K good
+  class W bad
+${R}`,
+docSeq: `sequenceDiagram
+  autonumber
+  participant S as Student
+  participant API as DocDesk API
+  participant SA as Student Affairs
+  rect rgb(254, 249, 195)
+    SA->>API: ★ POST /doc-types {name: Scholarship Form}
+    S->>API: ★ GET /doc-types (fill the dropdown)
+  end
+  S->>API: POST /requests {doc_type_id, reason}
+  API-->>S: 201 request DRQ-… (pending)
+  SA->>API: GET /requests?status=pending
+  rect rgb(254, 249, 195)
+    SA->>API: ★ PUT /requests/{id}/tat {expected_by, note}
+  end
+  SA->>API: POST /requests/{id}/answer (form-data: message, ★ document)
+  API-->>SA: request (answered)
+  S->>API: GET /requests/{id}
+  rect rgb(254, 249, 195)
+    S->>API: ★ GET /requests/{id}/document
+    S->>API: ★ PUT /requests/{id}/filled-form (file)
+    SA->>API: ★ GET /requests/{id}/filled-form
+  end
+  S->>API: POST /requests/{id}/acknowledge
+  API-->>S: request (acknowledged, closed)`,
+bulkTat: `flowchart LR
+  I["request_ids:<br/>DRQ-1, DRQ-2, DRQ-3"] --> C{"Every id exists<br/>and is pending?"}
+  C -- "yes" --> OK["✓ all 3 updated<br/>{items, count: 3}"]
+  C -- "no" --> NO["✗ nothing changed<br/>404 or 409 REQUEST_NOT_PENDING<br/>details.request_ids = the bad ones"]
+  NO -- "unselect them,<br/>try again" --> I
+  class I,C api
+  class OK good
+  class NO bad
+${R}`,
+formTrip: `flowchart LR
+  A["SA answers with<br/>a document<br/>(PDF / .docx)"] --> B["Requester downloads<br/>GET …/document"]
+  B --> C["Fills it in<br/>(or prints + photo)"]
+  C --> D["Uploads it back<br/>PUT …/filled-form"]
+  D --> E["SA downloads<br/>GET …/filled-form"]
+  E --> F["Requester<br/>acknowledges"]
+  class A,E staff
+  class B,C,D student
+  class F good
+${R}`,
+ticketLife: `flowchart LR
+  S(("start")) -- "POST /tickets" --> O(["<b>open</b><br/>CM posts progress notes<br/>reporter can PATCH<br/>★ CM sets TAT"])
+  O -- "CM: status resolved<br/>+ note" --> R(["<b>resolved</b>"])
+  R -- "CM: status open + note<br/>(reopen)" --> O
+  R -- "reporter<br/>POST /acknowledge" --> K(["<b>acknowledged</b><br/>closed"])
+  O -- "reporter withdraws,<br/>or CM / admin delete" --> D(["deleted"])
+  K -. "CM / admin delete" .-> D
+  class S org
+  class O api
+  class R staff
+  class K good
+  class D bad
+${R}`,
+ticketSeq: `sequenceDiagram
+  autonumber
+  participant S as Reporter
+  participant API as FixIt API
+  participant CM as Campus Maintenance
+  rect rgb(254, 249, 195)
+    CM->>API: ★ POST /issue-types {name: Electrical}
+    S->>API: ★ GET /issue-types
+  end
+  S->>API: POST /tickets (form-data: issue_type_id, title, description, photo)
+  API-->>S: 201 ticket TKT-… (open)
+  CM->>API: GET /tickets?status=open
+  rect rgb(254, 249, 195)
+    CM->>API: ★ PUT /tickets/{id}/tat {expected_by}
+  end
+  CM->>API: PUT /tickets/{id}/status {open, note: Electrician assigned}
+  S->>API: GET /tickets/{id}
+  API-->>S: update.note = Electrician assigned
+  CM->>API: PUT /tickets/{id}/status {resolved, note: Capacitor replaced}
+  S->>API: POST /tickets/{id}/acknowledge
+  API-->>S: ticket (acknowledged, closed)`,
+paging: `sequenceDiagram
+  participant App as Your app
+  participant API as API
+  App->>API: GET /notices?limit=25
+  API-->>App: items 1–25, next_cursor = "NTC-…a"
+  App->>API: GET /notices?limit=25&cursor=NTC-…a
+  API-->>App: items 26–50, next_cursor = "NTC-…b"
+  App->>API: GET /notices?limit=25&cursor=NTC-…b
+  API-->>App: items 51–60, next_cursor = null
+  Note over App: null means last page, so hide "Load more"`,
+errors: `flowchart LR
+  R["Response arrives"] --> C{"Status"}
+  C -- "2xx" --> OK["Show the data"]
+  C -- "401" --> L["Clear token,<br/>go to login"]
+  C -- "403" --> H["Show 'not allowed',<br/>hide that button for this role"]
+  C -- "404" --> N["Show 'not found'"]
+  C -- "409" --> S["Show error.message,<br/>reload the record"]
+  C -- "422" --> V["Highlight fields<br/>from error.details"]
+  C -- "429" --> W["Wait Retry-After<br/>seconds, then retry"]
+  C -- "5xx / network" --> T["Show 'try again'<br/>button, no blank screen"]
+  class R,C api
+  class OK good
+  class L,H,N,S,V,W,T bad
+${R}`
+};
+
+mermaid.initialize({
+  startOnLoad: false,
+  securityLevel: "loose",
+  theme: "base",
+  fontFamily: '-apple-system, "Helvetica Neue", Arial, sans-serif',
+  themeVariables: {
+    fontSize: "14px",
+    primaryColor: "#eef2ff", primaryBorderColor: "#4338ca", primaryTextColor: "#0f172a",
+    lineColor: "#64748b", secondaryColor: "#f8fafc", tertiaryColor: "#ffffff",
+    clusterBkg: "#f8fafc", clusterBorder: "#cbd5e1",
+    actorBkg: "#eef2ff", actorBorder: "#4338ca", actorTextColor: "#1e1b4b",
+    signalColor: "#334155", signalTextColor: "#0f172a",
+    noteBkgColor: "#fff7ed", noteBorderColor: "#fdba74", noteTextColor: "#7c2d12",
+    labelBoxBkgColor: "#eef2ff", labelBoxBorderColor: "#4338ca",
+    activationBkgColor: "#e0e7ff", sequenceNumberColor: "#ffffff",
+    edgeLabelBackground: "#ffffff"
+  },
+  flowchart: { htmlLabels: true, curve: "basis", padding: 12, nodeSpacing: 34, rankSpacing: 42 },
+  sequence: { useMaxWidth: true, mirrorActors: false, actorMargin: 40, messageMargin: 32, boxMargin: 8, noteMargin: 8, wrap: false },
+  state: { useMaxWidth: true }
+});
+
+(async () => {
+  const errors = [];
+  let i = 0;
+  for (const el of document.querySelectorAll(".mmd")) {
+    const key = el.dataset.d;
+    try {
+      const { svg } = await mermaid.render("m" + (i++), D[key]);
+      el.innerHTML = svg;
+    } catch (e) {
+      errors.push(key + ": " + (e.message || e));
+      el.innerHTML = "<pre style='color:red'>" + key + " failed</pre>";
+    }
+  }
+  window.__mmdErrors = errors;
+  window.__done = true;
+})();
+</script>
+</body>
+</html>
