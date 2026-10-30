@@ -1,0 +1,8 @@
+{
+  "name": "DocDesk — CampusOS Document Requests",
+  "description": "DocDesk — CampusOS academic document requests. Submit, track and receive official documents without repeated office visits.",
+  "request_exact_gpu_model": false,
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
