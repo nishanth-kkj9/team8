@@ -1,11 +1,14 @@
 import { Loader2 } from "lucide-react";
 import { Navigate } from "react-router-dom";
-import { useDemoAuth } from "../context/DemoAuthContext";
+import { useAuth } from "../context/AuthContext";
 import { homePathForProfile } from "../lib/permissions";
 
 /** "/" → the signed-in profile's own dashboard (or the login page). */
 export function HomeRedirect() {
-  const { profile, status } = useDemoAuth();
+  const {
+    profile,
+    status,
+  } = useAuth();
 
   if (status === "restoring") {
     return (

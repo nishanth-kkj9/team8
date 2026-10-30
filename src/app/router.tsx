@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { DemoLoginPage } from "../features/auth/pages/DemoLoginPage";
+import { LoginPage } from "../features/auth/pages/LoginPage";
 import { RequesterDashboardPage } from "../features/requester/pages/RequesterDashboardPage";
 import { NewRequestPage } from "../features/requester/pages/NewRequestPage";
 import { MyRequestsPage } from "../features/requester/pages/MyRequestsPage";
@@ -15,12 +15,12 @@ import { AdminDashboardPage } from "../features/admin/pages/AdminDashboardPage";
 import { AdminAllRequestsPage } from "../features/admin/pages/AdminAllRequestsPage";
 import { AdminRequestDetailPage } from "../features/admin/pages/AdminRequestDetailPage";
 import { AdminDocumentTypesPage } from "../features/admin/pages/AdminDocumentTypesPage";
+import { AdminUsersNewPage } from "../features/admin/pages/AdminUsersNewPage";
 import { ProtectedRoute } from "../routes/ProtectedRoute";
 import { HomeRedirect } from "../routes/HomeRedirect";
 import { NotFoundPage } from "../routes/NotFoundPage";
 
-/*
- * Route plan (ARCHITECTURE.md §11). Each portal is wrapped by ProtectedRoute,
+/* Route plan (ARCHITECTURE.md §11). Each portal is wrapped by ProtectedRoute,
  * which also renders the role-aware AppShell, so every route is either
  * role-correct or shows Access Denied — never a blank or leaking screen.
  * Phase 5 completes the Admin portal as strictly read-only: dashboard, the
@@ -29,9 +29,16 @@ import { NotFoundPage } from "../routes/NotFoundPage";
  * any DocDesk mutation control (§5D).
  */
 
+/* Role-based routing:
+ * - student, faculty, office_staff → /app (requester portal)
+ * - office_staff with dept "Student Affairs" → /sa (Student Affairs portal)
+ * - admin → /admin (admin portal, read-only)
+ * - /admin/users/new → Admin-only account creation page
+ */
+
 export const router = createBrowserRouter([
   { path: "/", element: <HomeRedirect /> },
-  { path: "/login", element: <DemoLoginPage /> },
+  { path: "/login", element: <LoginPage /> },
   {
     path: "/app",
     element: <ProtectedRoute area="requester" />,
@@ -66,6 +73,7 @@ export const router = createBrowserRouter([
       { path: "requests", element: <AdminAllRequestsPage /> },
       { path: "requests/:requestId", element: <AdminRequestDetailPage /> },
       { path: "document-types", element: <AdminDocumentTypesPage /> },
+      { path: "users/new", element: <AdminUsersNewPage /> },
     ],
   },
   { path: "*", element: <NotFoundPage /> },

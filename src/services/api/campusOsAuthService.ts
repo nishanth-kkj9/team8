@@ -1,4 +1,5 @@
-import type { DemoProfile } from "../../types/auth";
+// CampusOS authentication service
+import type { CampusRole } from "../../types/auth";
 import { ApiError } from "./apiErrors";
 import { campusOsClient } from "./campusOsClient";
 import {
@@ -6,147 +7,318 @@ import {
   getStoredSession,
   saveSession,
   type SessionData,
+  getValidToken,
 } from "./sessionStore";
+
+const TEAM8_ADMIN_EMAIL = "admin@team8.com";
 
 export interface LoginResponsePayload {
   access_token: string;
   token_type?: string;
   expires_in?: number;
-  profile?: DemoProfile;
+  profile?: {
+    role: CampusRole;
+    team_id: string;
+    name: string;
+    email_id: string;
+    dept?: string;
+    designation?: string;
+    phone_number?: string;
+    institution_name?: string;
+  };
 }
 
-const TEAM8_ADMIN_EMAIL = "admin@team8.com";
+export interface AuthResult {
+  profile:
+    | {
+        role: CampusRole;
+        team_id: string;
+        name: string;
+        email_id: string;
+        dept?: string;
+        designation?: string;
+        phone_number?: string;
+        institution_name?: string;
+      } | null;
+  token: string | null;
+  expiresAt: number | null;
+  error?: string;
+}
 
-export const campusOsAuthService = {
-  /**
-   * Performs authentication via official CampusOS auth endpoints.
-   * Admin uses POST /api/v1/auth/admin/login
-   * Requester/Staff uses POST /api/v1/auth/login
-   */
-  async login(email: string, otp: string): Promise<DemoProfile> {
-    const trimmedEmail = email.trim().toLowerCase();
-    const isAdminEmail = trimmedEmail === TEAM8_ADMIN_EMAIL;
+/** Performs authentication via official CampusOS auth endpoints.
+ * - Admin uses POST /api/v1/auth/admin/login
+ * - Requester/Staff uses POST /api/v1/auth/login
+ * - USE_ADMIN_LOGIN error triggers admin endpoint retry
+ * - Other HTTP 400 errors do NOT retry */
+export async function login(
+  email: string,
+  otp: string
+): Promise<AuthResult> {
+  const trimmedEmail = email.trim().toLowerCase();
+  const isAdminEmail = trimmedEmail === TEAM8_ADMIN_EMAIL;
 
-    let responseData: LoginResponsePayload;
+  let responseData: any;
+  let loginError: any = null;
 
-    if (isAdminEmail) {
+  if (isAdminEmail) {
+    try {
       responseData = await campusOsClient.post<LoginResponsePayload>(
         "/auth/admin/login",
         {
           email_id: trimmedEmail,
           otp: otp.trim(),
-        },
+        }
       );
-    } else {
-      try {
-        responseData = await campusOsClient.post<LoginResponsePayload>(
-          "/auth/login",
-          {
-            email_id: trimmedEmail,
-            otp: otp.trim(),
-          },
-        );
-      } catch (err) {
-        // Only retry admin endpoint if server specifically returned USE_ADMIN_LOGIN
-        if (err instanceof ApiError && err.code === "USE_ADMIN_LOGIN") {
+    } catch (err) {
+      loginError = err;
+      // Only retry admin endpoint if server specifically returned USE_ADMIN_LOGIN
+      if (err instanceof ApiError && err.code === "USE_ADMIN_LOGIN") {
+        try {
           responseData = await campusOsClient.post<LoginResponsePayload>(
             "/auth/admin/login",
             {
               email_id: trimmedEmail,
               otp: otp.trim(),
-            },
+            }
           );
-        } else {
-          throw err;
+        } catch (retryErr) {
+          loginError = retryErr;
         }
       }
     }
-
-    const token = responseData.access_token;
-    if (!token) {
-      throw new ApiError(500, "AUTH_ERROR", "No access_token returned by login endpoint");
-    }
-
-    const expiresIn = responseData.expires_in && responseData.expires_in > 0
-      ? responseData.expires_in
-      : 43200; // default 12 hours
-
-    // Temporarily save token so profile request carries Authorization: Bearer
-    saveSession(token, expiresIn, responseData.profile || {
-      role: isAdminEmail ? "admin" : "student",
-      team_id: "team8",
-      name: "",
-      email_id: trimmedEmail,
-    });
-
-    // Hydrate authoritative profile from /me endpoint
-    let authoritativeProfile: DemoProfile | undefined;
-    const isDeterminedAdmin = isAdminEmail || responseData.profile?.role === "admin";
-
+  } else {
     try {
-      let rawProfile: any;
-      if (isDeterminedAdmin) {
-        rawProfile = await campusOsClient.get<any>("/admin/me");
-      } else {
-        rawProfile = await campusOsClient.get<any>("/users/me");
-      }
-      authoritativeProfile = (rawProfile && rawProfile.profile) ? rawProfile.profile : rawProfile;
-    } catch {
-      // If /me call fails, use the profile provided in the login payload if available
-      if (responseData.profile && responseData.profile.role) {
-        authoritativeProfile = responseData.profile;
-      } else {
-        clearStoredSession();
-        throw new ApiError(
-          500,
-          "PROFILE_FETCH_FAILED",
-          "Could not retrieve authenticated user profile from CampusOS.",
-        );
-      }
-    }
-
-    if (!authoritativeProfile || !authoritativeProfile.role) {
-      clearStoredSession();
-      throw new ApiError(
-        500,
-        "INVALID_PROFILE",
-        "Authoritative profile returned from CampusOS was missing required role information.",
+      responseData = await campusOsClient.post<LoginResponsePayload>(
+        "/auth/login",
+        {
+          email_id: trimmedEmail,
+          otp: otp.trim(),
+        }
       );
-    }
-
-    // Update stored session with authoritative profile
-    saveSession(token, expiresIn, authoritativeProfile);
-    return authoritativeProfile;
-  },
-
-  /**
-   * Fetches full authoritative profile for active session
-   */
-  async getCurrentProfile(role?: string): Promise<DemoProfile | null> {
-    const session = getStoredSession();
-    if (!session) return null;
-
-    try {
-      if (role === "admin" || session.profile.role === "admin") {
-        return await campusOsClient.get<DemoProfile>("/admin/me");
+    } catch (err) {
+      loginError = err;
+      // Only retry admin endpoint if server specifically returned USE_ADMIN_LOGIN
+      if (err instanceof ApiError && (err as ApiError).code === "USE_ADMIN_LOGIN") {
+        try {
+          responseData = await campusOsClient.post<LoginResponsePayload>(
+            "/auth/admin/login",
+            {
+              email_id: trimmedEmail,
+              otp: otp.trim(),
+            }
+          );
+        } catch (retryErr) {
+          loginError = retryErr;
+        }
       }
-      return await campusOsClient.get<DemoProfile>("/users/me");
-    } catch {
-      return session.profile;
     }
-  },
+  }
 
-  /**
-   * Gets stored session if valid
-   */
-  getValidSession(): SessionData | null {
-    return getStoredSession();
-  },
+  // If we still don't have response data after retry, return error
+  if (!responseData) {
+    return { profile: null, token: null, expiresAt: null, error: "Login failed" };
+  }
 
-  /**
-   * Logs out by clearing session
-   */
-  logout(): void {
+  // Validate login response before accepting
+  const token = responseData.access_token;
+  if (!token) {
+    return { profile: null, token: null, expiresAt: null, error: "No access_token returned by login endpoint" };
+  }
+
+  const expiresIn = responseData.expires_in && responseData.expires_in > 0
+    ? responseData.expires_in
+    : 43200; // default 12 hours
+
+  // Token type must be bearer (case-insensitive)
+  const tokenType = (responseData.token_type || "").toLowerCase();
+  if (tokenType !== "bearer") {
+    return { profile: null, token: null, expiresAt: null, error: `Expected token type 'bearer', got '${tokenType}'` };
+  }
+
+  // Validate expires_in is a positive number
+  if (!(responseData.expires_in && responseData.expires_in > 0)) {
+    return { profile: null, token: null, expiresAt: null, error: "Invalid token expiry returned by login endpoint" };
+  }
+
+  // Extract profile from login response, validating it has required fields
+  let loginProfile: {
+    role: CampusRole;
+    team_id: string;
+    name: string;
+    email_id: string;
+    dept?: string;
+    designation?: string;
+    phone_number?: string;
+    institution_name?: string;
+  } | null = null;
+  if (responseData.profile && responseData.profile.role) {
+    if (!responseData.profile.team_id) {
+    } else if (!responseData.profile.name) {
+    } else if (!responseData.profile.email_id) {
+    } else {
+      loginProfile = {
+        role: responseData.profile.role,
+        team_id: responseData.profile.team_id,
+        name: responseData.profile.name,
+        email_id: responseData.profile.email_id,
+        dept: responseData.profile.dept,
+        designation: responseData.profile.designation,
+        phone_number: responseData.profile.phone_number,
+        institution_name: responseData.profile.institution_name,
+      };
+    }
+  }
+
+  // Hydrate authoritative profile from /me endpoint
+  let authoritativeProfile: {
+    role: CampusRole;
+    team_id: string;
+    name: string;
+    email_id: string;
+    dept?: string;
+    designation?: string;
+    phone_number?: string;
+    institution_name?: string;
+  } | null = null;
+
+  const isDeterminedAdmin = isAdminEmail || (loginProfile?.role === "admin");
+
+  try {
+    if (isDeterminedAdmin) {
+      const rawProfile = await campusOsClient.get<any>("/admin/me");
+      authoritativeProfile = extractProfile(rawProfile.profile);
+    } else {
+      const rawProfile = await campusOsClient.get<any>("/users/me");
+      authoritativeProfile = extractProfile(rawProfile.profile);
+    }
+  } catch (profileErr) {
+    // If /me call fails, use the profile provided in the login payload if valid
+    if (loginProfile && loginProfile.role && loginProfile.team_id && loginProfile.name && loginProfile.email_id) {
+      authoritativeProfile = loginProfile;
+    } else {
+      clearStoredSession();
+      return { profile: null, token: null, expiresAt: null, error: "Could not retrieve authenticated user profile from CampusOS." };
+    }
+  }
+
+  // Final validation of authoritative profile
+  if (!authoritativeProfile || !authoritativeProfile.role) {
     clearStoredSession();
-  },
-};
+    return { profile: null, token: null, expiresAt: null, error: "Authoritative profile missing required role information." };
+  }
+
+  // Update stored session with authoritative profile
+  saveSession(token, responseData.expires_in, authoritativeProfile);
+
+  return {
+    profile: authoritativeProfile,
+    token,
+    expiresAt: Date.now() + responseData.expires_in * 1000,
+    error: undefined,
+  };
+}
+
+/** Extracts a CampusProfile from a raw API response profile object. */
+function extractProfile(
+  raw: Record<string, unknown> | undefined
+): {
+  role: CampusRole;
+  team_id: string;
+  name: string;
+  email_id: string;
+  dept?: string;
+  designation?: string;
+  phone_number?: string;
+  institution_name?: string;
+} | null {
+  if (!raw) return null;
+
+  const role = (raw.role ?? "").toLowerCase() as CampusRole;
+  const team_id = String(raw.team_id ?? "").trim();
+  const name = String(raw.name ?? "").trim();
+  const email_id = String(raw.email_id ?? "").trim();
+
+  if (!role || !team_id || !name || !email_id) {
+    return null;
+  }
+
+  return {
+    role,
+    team_id,
+    name,
+    email_id,
+    dept: raw.dept ? String(raw.dept).trim() : undefined,
+    designation: raw.designation ? String(raw.designation).trim() : undefined,
+    phone_number: raw.phone_number ? String(raw.phone_number).trim() : undefined,
+    institution_name: raw.institution_name ? String(raw.institution_name).trim() : undefined,
+  };
+}
+
+/** Fetches full authoritative profile for active session
+ * - On HTTP 401, clears session and returns null (does NOT restore stale profile)
+ * - Network errors are handled separately from auth failures */
+export async function getCurrentProfile(
+  role?: string
+): Promise<{
+  profile: {
+    role: CampusRole;
+    team_id: string;
+    name: string;
+    email_id: string;
+    dept?: string;
+    designation?: string;
+    phone_number?: string;
+    institution_name?: string;
+  } | null;
+  error?: string;
+}> {
+  const session = getStoredSession();
+  if (!session) {
+    return { profile: null, error: undefined };
+  }
+
+  // Validate session expiry before making request
+  if (Date.now() >= session.expiresAt) {
+    clearStoredSession();
+    return { profile: null, error: undefined };
+  }
+
+  try {
+    let endpoint: string;
+    if (role === "admin" || session.profile.role === "admin") {
+      endpoint = "/admin/me";
+    } else {
+      endpoint = "/users/me";
+    }
+
+    const rawProfile = await campusOsClient.get<any>(endpoint);
+    const profileData = rawProfile.profile || rawProfile;
+    const extracted = extractProfile(profileData);
+    if (extracted) {
+      return { profile: extracted, error: undefined };
+    }
+    clearStoredSession();
+    return { profile: null, error: undefined };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Request failed";
+
+    // HTTP 401/403 - token is invalid/revoked, MUST clear session
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403 || err.code === "UNAUTHORIZED" || err.code === "INVALID_TOKEN" || err.code === "TOKEN_EXPIRED")) {
+      clearStoredSession();
+      return { profile: null, error: err.message };
+    }
+
+    // Network failures and other errors - do NOT clear session automatically
+    return { profile: null, error: error };
+  }
+}
+
+/** Gets stored session if valid */
+export function getValidSession(): SessionData | null {
+  return getStoredSession();
+}
+
+/** Logs out by clearing session */
+export function logout(): void {
+  clearStoredSession();
+}

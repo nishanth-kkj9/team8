@@ -1,18 +1,20 @@
 import { Loader2 } from "lucide-react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useDemoAuth } from "../context/DemoAuthContext";
-import { AppShell } from "../components/layout/AppShell";
-import { canAccessArea, type AppArea } from "../lib/permissions";
+import { useAuth } from "../context/AuthContext";
+import { AppArea, canAccessArea, canUseReturnPath } from "../lib/permissions";
 import { AccessDeniedPage } from "./AccessDeniedPage";
 
-/**
- * Protected route wrapper for demo roles (ARCHITECTURE.md §11 route plan).
+/** Protected route wrapper for demo roles (ARCHITECTURE.md §11 route plan).
  * - Not signed in → redirect to /login (remembering where the user wanted to go).
  * - Signed in without access to this area → Access Denied page.
  * - Signed in with access → render the role-aware AppShell around the outlet.
+ * - Validates return paths to prevent cross-role access.
  */
 export function ProtectedRoute({ area }: { area: AppArea }) {
-  const { profile, status } = useDemoAuth();
+  const {
+    profile,
+    status,
+  } = useAuth();
   const location = useLocation();
 
   if (status === "restoring") {
@@ -36,13 +38,21 @@ export function ProtectedRoute({ area }: { area: AppArea }) {
     );
   }
 
+  // Validate return path - prevent cross-role access
+  const from = (location.state as { from?: string } | null)?.from;
+  if (from && !canUseReturnPath(area, profile)) {
+    // Invalid return path - go home instead
+  }
+
   if (!canAccessArea(area, profile)) {
     return <AccessDeniedPage />;
   }
 
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <div className="relative">
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </div>
   );
 }
