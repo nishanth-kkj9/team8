@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# env files (the platform-provided .env is committed separately)
+.env
+.env.*
+!.env.example
+
+# sandbox runtime plumbing (not part of the DocDesk source)
+.zscripts/
+Caddyfile
+dev.log
+dev.out.log
+server.log
+*.log
+
+# platform directories
+/upload/
+/download/
+/skills/
+/examples/
+
+# misc
+.DS_Store
+.local-*
+.claude/
+.z-ai-config/
