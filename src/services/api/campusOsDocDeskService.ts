@@ -29,6 +29,16 @@ interface RawListResponse<T> {
 export class CampusOsDocDeskService implements DocDeskService {
   private currentViewer: DemoProfile | null = null;
 
+  /** Read the canonical server state after an answer mutation. Some deployments
+   * return an empty body for DELETE and others return a partial mutation result. */
+  private async fetchUpdatedRequest(requestId: string): Promise<DocRequest> {
+    const request = await this.getRequest(requestId);
+    if (!request) {
+      throw new ApiError(404, "NOT_FOUND", `Request ${requestId} was not found after the answer update.`);
+    }
+    return request;
+  }
+
   setViewer(profile: DemoProfile | null): void {
     this.currentViewer = profile;
   }
@@ -122,10 +132,11 @@ export class CampusOsDocDeskService implements DocDeskService {
       form.append("document", input.document);
     }
 
-    return campusOsClient.postForm<DocRequest>(
+    await campusOsClient.postForm<unknown>(
       `/docdesk/requests/${encodeURIComponent(requestId)}/answer`,
       form,
     );
+    return this.fetchUpdatedRequest(requestId);
   }
 
   async updateAnswer(
@@ -152,16 +163,18 @@ export class CampusOsDocDeskService implements DocDeskService {
       throw new ApiError(400, "VALIDATION_ERROR", "Answer update requires at least one field to change.");
     }
 
-    return campusOsClient.patchForm<DocRequest>(
+    await campusOsClient.patchForm<unknown>(
       `/docdesk/requests/${encodeURIComponent(requestId)}/answer`,
       form,
     );
+    return this.fetchUpdatedRequest(requestId);
   }
 
   async withdrawAnswer(requestId: string): Promise<DocRequest> {
-    return campusOsClient.delete<DocRequest>(
+    await campusOsClient.delete<unknown>(
       `/docdesk/requests/${encodeURIComponent(requestId)}/answer`,
     );
+    return this.fetchUpdatedRequest(requestId);
   }
 
   async acknowledgeRequest(requestId: string): Promise<DocRequest> {
