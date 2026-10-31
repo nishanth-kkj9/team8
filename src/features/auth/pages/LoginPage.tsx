@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Loader2, LogIn, ShieldCheck } from "lucide-react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useToast } from "../../../context/ToastContext";
 import { canAccessArea, homePathForProfile } from "../../../lib/permissions";
@@ -35,7 +35,7 @@ function targetFor(profile: CampusProfile, from?: string): string {
 }
 
 export function LoginPage() {
-  const { profile, status, signInWithEmail } = useAuth();
+  const { profile, status, restoreError, retryRestore, signInWithEmail } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -144,6 +144,12 @@ export function LoginPage() {
                 {errors.form}
               </div>
             )}
+            {status === "restore-error" && (
+              <div role="alert" className="rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Could not validate the saved CampusOS session: {restoreError}. Your saved profile was not used.
+                <button type="button" onClick={retryRestore} className="ml-2 font-semibold underline">Retry</button>
+              </div>
+            )}
 
             <Field label="Email address" htmlFor="email" required error={errors.email}>
               <Input
@@ -187,15 +193,7 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="text-center text-sm text-ink-500">
-            Admin?{" "}
-            <Link
-              to="/admin/users/new"
-              className="font-medium text-primary-700 hover:underline"
-            >
-              Sign in to register students
-            </Link>
-          </p>
+          <p className="text-center text-sm text-ink-500">Don&apos;t have access? Contact your campus administrator.</p>
 
           <p className="flex items-center justify-center gap-1.5 text-center text-xs text-ink-400">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />

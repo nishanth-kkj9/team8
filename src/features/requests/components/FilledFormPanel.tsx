@@ -9,7 +9,7 @@ import { Button } from "../../../components/ui/Button";
 import { Modal } from "../../../components/ui/Modal";
 import { FileMetadataCard } from "./FileMetadataCard";
 import { validateFilledFormFile } from "../../../lib/validation";
-import { downloadDemoFile } from "../../../lib/download";
+import { downloadFile } from "../../../lib/download";
 import {
   canDownloadFilledForm,
   canRemoveFilledForm,
@@ -60,7 +60,7 @@ export function FilledFormPanel({
     if (!selected) return;
 
     // Client-side file-type / size gate (mirrors the API: PDF, DOCX, JPEG,
-    // PNG; max 10 MB). The mock service re-validates.
+    // PNG; max 10 MB). CampusOS validates the uploaded file.
     const error = validateFilledFormFile(selected);
     if (error) {
       setFileError(error);
@@ -121,7 +121,7 @@ export function FilledFormPanel({
     setBusy("download");
     try {
       const file = await docDeskService.downloadFilledForm(request.request_id);
-      if (file) downloadDemoFile(file);
+      if (file) downloadFile(file);
     } catch (err) {
       toast({
         title: "Download failed",

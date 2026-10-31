@@ -21,7 +21,7 @@ import { EmptyState } from "../../../components/ui/EmptyState";
 import { RequestTimeline } from "../../requests/components/RequestTimeline";
 import { AnswerPanel } from "../../requests/components/AnswerPanel";
 import { FileMetadataCard } from "../../requests/components/FileMetadataCard";
-import { downloadDemoFile } from "../../../lib/download";
+import { downloadFile } from "../../../lib/download";
 import { formatDateTime, formatDateOnly } from "../../../lib/date";
 import { ROLE_LABELS } from "../../../types/auth";
 import {
@@ -95,7 +95,7 @@ export function AdminRequestDetailPage() {
     try {
       const file = await docDeskService.downloadAnswerDocument(request.request_id);
       if (file) {
-        downloadDemoFile(file);
+        downloadFile(file);
       } else {
         toast({
           title: "No document attached",
@@ -119,7 +119,7 @@ export function AdminRequestDetailPage() {
     try {
       const file = await docDeskService.downloadFilledForm(request.request_id);
       if (file) {
-        downloadDemoFile(file);
+        downloadFile(file);
       } else {
         toast({
           title: "No filled-in form",

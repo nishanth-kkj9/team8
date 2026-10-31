@@ -1,11 +1,10 @@
 import type { DownloadableDemoFile } from "../services/docDeskService.types";
 
 /**
- * Trigger a browser download for a demo file blob (??5A R5, ??8.3).
- * In the API phase, downloads will be served by the authenticated
- * `GET /requests/{id}/document` and `/filled-form` endpoints instead.
+ * Trigger a browser download for a file returned by the authenticated CampusOS
+ * binary download endpoints.
  */
-export function downloadDemoFile(file: DownloadableDemoFile): void {
+export function downloadFile(file: DownloadableDemoFile): void {
   const url = URL.createObjectURL(file.blob);
   const anchor = document.createElement("a");
   anchor.href = url;

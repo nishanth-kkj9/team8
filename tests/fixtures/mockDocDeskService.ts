@@ -1,12 +1,12 @@
-import type { RequesterRole } from "../types/auth";
-import type { DocType, StoredFileMetadata } from "../types/document";
-import type { DocRequest } from "../types/request";
-import { buildSeedRequests } from "../data/seedRequests";
-import { buildSeedDocumentTypes } from "../data/seedDocumentTypes";
+import type { RequesterRole } from "../../src/types/auth";
+import type { DocType, StoredFileMetadata } from "../../src/types/document";
+import type { DocRequest } from "../../src/types/request";
+import { buildSeedRequests } from "./seedRequests";
+import { buildSeedDocumentTypes } from "./seedDocumentTypes";
 import {
   canViewAllRequests,
   isStudentAffairs,
-} from "../lib/permissions";
+} from "../../src/lib/permissions";
 import {
   LIMITS,
   validateAnswerFile,
@@ -14,7 +14,7 @@ import {
   validateReason,
   validateDocTypeName,
   validateTatDate,
-} from "../lib/validation";
+} from "../../src/lib/validation";
 import {
   DocDeskServiceError,
   type AnswerRequestInput,
@@ -28,8 +28,8 @@ import {
   type UpdateAnswerInput,
   type UpdateDocTypeInput,
   type UpdateRequestInput,
-} from "./docDeskService.types";
-import type { DemoProfile } from "../types/auth";
+} from "../../src/services/docDeskService.types";
+import type { DemoProfile } from "../../src/types/auth";
 
 /*
  * Mock implementation of the DocDeskService contract.
@@ -232,9 +232,6 @@ class MockDocDeskService {
     let scoped = canViewAllRequests(viewer)
       ? [...this.requests]
       : this.requests.filter((r) => r.requested_by === viewer.email_id);
-    if (filters.mine) {
-      scoped = scoped.filter((r) => r.requested_by === viewer.email_id);
-    }
     if (filters.status) {
       scoped = scoped.filter((r) => r.status === filters.status);
     }

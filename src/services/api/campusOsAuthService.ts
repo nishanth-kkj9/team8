@@ -5,7 +5,6 @@ import { campusOsClient } from "./campusOsClient";
 import {
   clearStoredSession,
   getStoredSession,
-  saveSession,
   type SessionData,
 } from "./sessionStore";
 
@@ -20,6 +19,7 @@ export interface LoginResponsePayload {
     team_id: string;
     name: string;
     email_id: string;
+    usn?: string;
     dept?: string;
     designation?: string;
     phone_number?: string;
@@ -32,6 +32,7 @@ export interface AuthResult {
   team_id?: string;
   name?: string;
   email_id?: string;
+  usn?: string;
   dept?: string;
   designation?: string;
   phone_number?: string;
@@ -41,6 +42,7 @@ export interface AuthResult {
     team_id: string;
     name: string;
     email_id: string;
+    usn?: string;
     dept?: string;
     designation?: string;
     phone_number?: string;
@@ -64,6 +66,7 @@ function extractProfile(raw: Record<string, unknown> | undefined): {
   team_id: string;
   name: string;
   email_id: string;
+  usn?: string;
   dept?: string;
   designation?: string;
   phone_number?: string;
@@ -85,6 +88,7 @@ function extractProfile(raw: Record<string, unknown> | undefined): {
     team_id: teamId,
     name,
     email_id: emailId,
+    usn: raw.usn ? String(raw.usn).trim() : undefined,
     dept: raw.dept ? String(raw.dept).trim() : undefined,
     designation: raw.designation ? String(raw.designation).trim() : undefined,
     phone_number: raw.phone_number ? String(raw.phone_number).trim() : undefined,
@@ -118,30 +122,30 @@ export async function login(email: string, otp: string): Promise<AuthResult> {
       payload,
     );
 
-    const token = responseData.access_token;
-    if (!token) {
-      return { profile: null, token: null, expiresAt: null, error: "No access_token returned by login endpoint." };
-    }
-
-    const expiresIn = responseData.expires_in && responseData.expires_in > 0 ? responseData.expires_in : 43200;
-    const tokenType = (responseData.token_type || "").toLowerCase();
-    if (tokenType && tokenType !== "bearer") {
-      return { profile: null, token: null, expiresAt: null, error: `Expected token type 'bearer', got '${tokenType}'.` };
+    const token = typeof responseData.access_token === "string" ? responseData.access_token.trim() : "";
+    const expiresIn = responseData.expires_in;
+    const tokenType = typeof responseData.token_type === "string" ? responseData.token_type.toLowerCase() : "";
+    if (!token || tokenType !== "bearer" || typeof expiresIn !== "number" || !Number.isFinite(expiresIn) || expiresIn <= 0) {
+      clearStoredSession();
+      return { profile: null, token: null, expiresAt: null, error: "CampusOS returned an invalid token, token type, or expiry." };
     }
 
     const loginProfile = responseData.profile ? extractProfile(responseData.profile as Record<string, unknown>) : null;
-    const roleToFetch = isAdminEmail ? "admin" : loginProfile?.role ?? "student";
+    if (!loginProfile) {
+      clearStoredSession();
+      return { profile: null, token: null, expiresAt: null, error: "CampusOS did not return a valid profile." };
+    }
+    const roleToFetch = loginProfile.role;
     const authoritativeProfile = await fetchProfileForRole(roleToFetch, token);
     if (!authoritativeProfile) {
       clearStoredSession();
       return { profile: null, token: null, expiresAt: null, error: "Could not retrieve authenticated user profile from CampusOS." };
     }
-    if (isAdminEmail && authoritativeProfile.role !== "admin") {
+    if (authoritativeProfile.role !== loginProfile.role || (isAdminEmail && authoritativeProfile.role !== "admin")) {
       clearStoredSession();
-      return { profile: null, token: null, expiresAt: null, error: "CampusOS did not confirm this account as an admin." };
+      return { profile: null, token: null, expiresAt: null, error: "CampusOS profile validation failed after login." };
     }
 
-    saveSession(token, expiresIn, authoritativeProfile);
     const authenticated = Object.assign({ ...authoritativeProfile }, {
       profile: authoritativeProfile,
       token,
@@ -154,35 +158,6 @@ export async function login(email: string, otp: string): Promise<AuthResult> {
     if (error && (error.status === 401 || error.code === "UNAUTHORIZED" || error.code === "INVALID_TOKEN" || error.code === "TOKEN_EXPIRED")) {
       clearStoredSession();
       return { profile: null, token: null, expiresAt: null, error: error.message };
-    }
-
-    if (error && error.code === "USE_ADMIN_LOGIN" && !isAdminEmail) {
-      try {
-        const responseData = await campusOsClient.post<LoginResponsePayload>("/auth/admin/login", {
-          email_id: trimmedEmail,
-          otp: trimmedOtp,
-        });
-        const token = responseData.access_token;
-        if (!token) {
-          return { profile: null, token: null, expiresAt: null, error: "No access_token returned by login endpoint." };
-        }
-        const expiresIn = responseData.expires_in && responseData.expires_in > 0 ? responseData.expires_in : 43200;
-        const authoritativeProfile = await fetchProfileForRole("admin", token);
-        if (!authoritativeProfile) {
-          clearStoredSession();
-          return { profile: null, token: null, expiresAt: null, error: "Could not retrieve authenticated user profile from CampusOS." };
-        }
-        saveSession(token, expiresIn, authoritativeProfile);
-        return { profile: authoritativeProfile, token, expiresAt: Date.now() + expiresIn * 1000, error: undefined };
-      } catch (retryErr) {
-        const retryError = retryErr instanceof ApiError ? retryErr : undefined;
-        return {
-          profile: null,
-          token: null,
-          expiresAt: null,
-          error: retryError ? retryError.message : "Unable to sign in.",
-        };
-      }
     }
 
     return {
@@ -200,6 +175,7 @@ export async function getCurrentProfile(role?: string): Promise<{
     team_id: string;
     name: string;
     email_id: string;
+    usn?: string;
     dept?: string;
     designation?: string;
     phone_number?: string;
@@ -222,7 +198,7 @@ export async function getCurrentProfile(role?: string): Promise<{
     const rawProfile = await campusOsClient.get<{ profile?: Record<string, unknown> }>(endpoint);
     const profileData = rawProfile?.profile ?? rawProfile;
     const extracted = extractProfile(profileData as Record<string, unknown> | undefined);
-    if (!extracted) {
+    if (!extracted || extracted.role !== session.profile.role || (role && extracted.role !== role)) {
       clearStoredSession();
       return { profile: null, error: undefined };
     }

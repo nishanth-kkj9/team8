@@ -7,7 +7,7 @@ import { docDeskService } from "../../../services/serviceProvider";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
 import { EmptyState } from "../../../components/ui/EmptyState";
-import { downloadDemoFile } from "../../../lib/download";
+import { downloadFile } from "../../../lib/download";
 import { fileKindLabel, formatFileSize } from "../../../lib/display";
 import { formatDateTime } from "../../../lib/date";
 import { cn } from "../../../lib/cn";
@@ -65,7 +65,7 @@ export function SaFilledFormsPage() {
           ? await docDeskService.downloadAnswerDocument(request.request_id)
           : await docDeskService.downloadFilledForm(request.request_id);
       if (file) {
-        downloadDemoFile(file);
+        downloadFile(file);
       } else {
         toast({
           title: "Nothing to download",

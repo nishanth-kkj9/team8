@@ -1,5 +1,5 @@
-import type { DocType } from "../types/document";
-import { isoDaysAgo } from "../lib/date";
+import type { DocType } from "../../src/types/document";
+import { isoDaysAgo } from "../../src/lib/date";
 
 /**
  * Seed document types (ARCHITECTURE.md ??7.1). Includes one archived type so

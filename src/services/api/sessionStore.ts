@@ -36,7 +36,7 @@ export function saveSession(
   try {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
   } catch (err) {
-    console.warn("Failed to persist session to sessionStorage", err);
+    // Keep authentication data out of logs.
   }
   return data;
 }

@@ -10,8 +10,8 @@
  *  - Scenario 8: Admin read-only access (no mutation controls)
  *  - Scenario 9: Other requester roles (Faculty, Ordinary Staff) without USN requirement
  */
-import { mockDocDeskService as svc } from "../src/services/mockDocDeskService";
-import { seedProfiles } from "../src/data/seedProfiles";
+import { mockDocDeskService as svc } from "../tests/fixtures/mockDocDeskService";
+import { seedProfiles } from "../tests/fixtures/seedProfiles";
 import {
   canAccessArea,
   canCreateRequest,

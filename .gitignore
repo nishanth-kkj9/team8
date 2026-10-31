@@ -5,7 +5,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# env files (the platform-provided .env is committed separately)
+# environment files; only the placeholder template is tracked
 .env
 .env.*
 !.env.example

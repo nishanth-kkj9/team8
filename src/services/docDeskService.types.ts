@@ -27,8 +27,6 @@ export class DocDeskServiceError extends Error {
 export interface RequestFilters {
   status?: DocDeskStatus;
   doc_type_id?: string;
-  /** true -> only the viewer's own requests (mirrors API query mine=true). */
-  mine?: boolean;
   limit?: number;
   cursor?: string;
 }

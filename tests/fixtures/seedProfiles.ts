@@ -6,7 +6,7 @@ import {
   Presentation,
   ShieldCheck,
 } from "lucide-react";
-import type { DemoProfile } from "../types/auth";
+import type { DemoProfile } from "../../src/types/auth";
 
 type DemoRoleKey = "student" | "faculty" | "office_staff" | "student_affairs" | "admin";
 

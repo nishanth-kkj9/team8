@@ -158,7 +158,7 @@ export function RequesterDashboardPage() {
       </section>
 
       <Card className="p-5">
-        <h2 className="text-sm font-semibold text-ink-900">Demo profile</h2>
+        <h2 className="text-sm font-semibold text-ink-900">Your profile</h2>
         <p className="mt-1 text-xs text-ink-500">{roleLine(profile!)}</p>
         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div className="flex justify-between gap-4 sm:block">

@@ -1,108 +1,40 @@
-# DocDesk ??? CampusOS Document Requests
+# DocDesk
 
-The CampusOS academic document request desk, built as a **frontend-only demo** per
-`ARCHITECTURE.md`. Phases 1???3 are implemented: design system, role-aware AppShell,
-demo login, protected role-aware routing, seed data, the mock service contract,
-centralized permission helpers, the full requester lifecycle (create / list /
-search / track / edit / withdraw / acknowledge), and the Student Affairs core
-(dashboard, queue, review & answer composer with edit/withdraw). No backend and no
-CampusOS API calls.
+DocDesk is a role-based CampusOS frontend for academic document requests. It uses the organiser-provided CampusOS API for authentication, request data, document types, turnaround dates, answers, and file transfers. There is no production demo login or mock-data fallback.
 
-## Stack
+## Requirements
 
-- React 19 + Vite 8 + TypeScript (strict)
-- Tailwind CSS 4 (CSS-first design tokens in `src/styles/index.css`)
-- React Router 7 (`createBrowserRouter`)
-- Lucide React icons, Inter Variable font (bundled locally)
+- Node.js 20 or newer
+- The CampusOS API base URL supplied by the organisers
+- A provisioned campus account and the team's runtime OTP
 
-## Run it
+Copy `.env.example` to `.env` and set `VITE_API_BASE_URL` to the organiser-provided API origin. The client adds `/api/v1` once. The app stops with a configuration error if this value is missing. Never put OTPs or access tokens in Vite variables.
 
-```bash
-bun install        # or npm install
-bun run dev        # dev server on http://localhost:3000 (strict port, sandbox preview)
-bun run typecheck  # tsc --noEmit
-bun run build      # typecheck + production build to dist/
-bun run preview    # serve the production build on :3000
+```sh
+npm ci
+npm run dev
+npm run typecheck
+npm test
+npm run build
+npm run preview
 ```
 
-> `db:push` is a no-op kept for the sandbox dev runner; DocDesk Phase 1 has no database.
+## Authentication and roles
 
-## Demo logins
+The login form accepts a registered email and OTP. Team 8's pre-provisioned Admin uses `POST /api/v1/auth/admin/login`; other accounts use `POST /api/v1/auth/login`. The app verifies the returned bearer token, expiry, and server profile using `/admin/me` or `/users/me` before granting access. CampusOS's Flow Guide says the OTP is shared by the team; account-creation responses may return this same team OTP. The Admin account screen labels it as shared and displays it only in the in-memory success panel when the API returns it.
 
-The login screen offers five clearly-labelled demo accounts (any 4+ character OTP
-works with the email form, or click an account card):
+Students, Faculty, and ordinary Office Staff use the requester portal. Student Affairs is Office Staff whose department is Student Affairs. Admin can browse DocDesk read-only and download permitted files. The separate Admin-only **Create Campus Account** screen provisions Student, Faculty, or Office Staff through the CampusOS user API; it is outside the DocDesk request portal. There is no public signup or Admin signup.
 
-| Demo account | Profile | Portal |
-|---|---|---|
-| Student | Asha Kumar ?? CSE, USN 1NT21CS047 | `/app` |
-| Faculty | Meera Rao ?? Associate Professor | `/app` |
-| Other Office Staff | Suresh Babu ?? Accounts | `/app` |
-| Student Affairs | Ravi Shetty ?? office_staff, dept "Student Affairs" | `/sa` |
-| Admin | Vikram Desai ?? institution admin | `/admin` (read-only) |
+CampusOS tokens are stored in `sessionStorage` for the browser session. This enables bearer API requests but remains accessible to same-origin JavaScript; keep dependencies trusted and deploy with a restrictive content-security policy.
 
-Each role sees only its own navigation; typing another role's URL shows an
-Access Denied page. Data is scoped per role: requesters see their own requests,
-Student Affairs and Admin see all.
+## DocDesk API coverage
 
-## Phase 1 contents
+The service adapter in `src/services/api/campusOsDocDeskService.ts` implements request create/list/detail/edit/withdraw, answer create/edit/withdraw, acknowledgement, document type list/detail/create/edit/archive/restore/delete, single and atomic bulk TAT, answer-document download, and filled-form upload/download/removal. Request statuses are `pending`, `answered`, and `acknowledged`. Multipart requests let the browser set the boundary; successful downloads are treated as binary Blobs.
 
-- **Design system** (`src/styles/index.css`): navy/indigo primary, royal blue accent,
-  status colours (amber/blue/green), 10???12px radii, Inter typography.
-- **AppShell** (`src/components/layout/`): collapsible sidebar, mobile drawer,
-  topbar with breadcrumbs, help dialog, profile menu, `Demo data` indicator, toasts.
-- **Demo login** (`src/features/auth/`): email + OTP with masked/unmasked toggle,
-  inline validation, five demo account shortcuts.
-- **Protected routes** (`src/routes/`): role-aware guards, access denied, 404,
-  role home redirect; Phase 2+ screens are scaffolded with informative placeholders.
-- **Seed data** (`src/data/`): 5 profiles, 5 document types (one archived),
-  7 requests covering every required status/file combination, dates relative to today.
-- **Mock service** (`src/services/`): the full `DocDeskService` contract from
-  `ARCHITECTURE.md` ??7.3, implemented with localStorage persistence, viewer-scoped
-  visibility, API-like error codes, and `resetDemoData()` (profile menu).
-- **Permissions** (`src/lib/permissions.ts`): all authorization helpers
-  (`canCreateRequest`, `canAnswerRequest`, `canManageDocumentTypes`, ???) in one place;
-  components never compare role strings inline.
+The CampusOS API is authoritative for validation and permissions. The UI checks the documented field and file limits before sending requests. API errors retain status, code, message, details, request ID, and Retry-After when available.
 
-## Phase 2 contents ??? Requester core
+## Verification limits
 
-- **Dashboard** (`RequesterDashboardPage`): live pending/answered/acknowledged
-  counters from the mock service, quick links, recent requests table.
-- **Request a Document** (`NewRequestPage`, `/app/requests/new`): active document
-  type dropdown, reason with 5???1,000 character validation and counter, read-only
-  requester details (USN for students only), mock `DRQ-???` ID from the service.
-- **My Requests** (`MyRequestsPage`, `/app/requests`): search by ID/document name,
-  status + document type filters, newest/oldest/expected-date sort, empty states.
-- **Request detail** (`RequestDetailPage`, `/app/requests/:id`): lifecycle timeline,
-  TAT panel, answer panel with optional document download, edit/withdraw while
-  pending, acknowledge when answered ??? all with confirmation dialogs and toasts.
-- **Shared components** (`src/components/requests/`, `src/features/requests/`):
-  responsive `RequestTable` (desktop table / mobile cards), `RequestForm`,
-  `RequestTimeline`, `AnswerPanel`, `FileMetadataCard`, `RequestFilters`.
-- The Student Affairs answer step of the Phase 2 acceptance round trip is performed
-  through the mock service directly (dev-only `window.__docDeskService` hook); the
-  SA queue and answer composer UI arrive in Phase 3.
+CI runs typecheck, the repository's HTTP-mocked/service checks, and a production build. These checks do not prove that organiser credentials, CORS, or a live CampusOS deployment work. Live API verification requires the organiser URL and provisioned test accounts; none are included in this repository. Do not treat a local build or mocked HTTP test as live integration proof.
 
-## Phase 3 contents ??? Student Affairs core
-
-- **SA dashboard** (`SaDashboardPage`, `/sa/dashboard`): institution-wide counters,
-  quick actions, latest pending queue, TAT due-soon/overdue attention panel
-  (frontend-derived), awaiting-requester and returned-form counters, recent
-  responses with message previews.
-- **Request queue** (`SaQueuePage`, `/sa/requests`): status tabs (All / Pending /
-  Answered / Acknowledged, synced with the `?status=` param and sidebar nav),
-  search across requester name / email / request ID / document, doc-type filter,
-  sort, and a requester-column table view.
-- **Review & answer** (`SaRequestDetailPage`, `/sa/requests/:id`): requester
-  details (name/email/role/dept/phone), reason, TAT, timeline, answer panel;
-  answer composer with 1???2,000 character message counter, four response
-  templates, optional PDF/DOCX attachment (???10 MB), edit answer (replace/remove
-  document) and withdraw answer (confirmation; returns the request to pending).
-- The Phase 2 dev-only `window.__docDeskService` hook was removed ??? SA answers
-  now go through the real composer UI.
-
-## Phases still to build
-
-Per `ARCHITECTURE.md` ??12: Phase 4 bonus features (document types, TAT, bulk TAT,
-filled forms), Phase 5 admin
-read-only browsing, Phase 6 polish/QA. All later phases must go through
-`docDeskService` ??? swap the mock for the real API in `src/services/serviceProvider.ts`.
+The track assignment PDF lists DocDesk for Team 8. The official starter repository could not be retrieved in this environment, so this standalone repository has not been verified against any starter-only feature-track constraints.

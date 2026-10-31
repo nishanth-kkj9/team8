@@ -175,7 +175,7 @@ export function pageTitleFor(pathname: string, search: string): string {
     "/sa/document-types": "Document Types",
     "/sa/turnaround-time": "Turnaround Time",
     "/admin/dashboard": "Dashboard",
-    "/admin/users/new": "Register Student",
+    "/admin/users/new": "Create Campus Account",
     "/admin/requests": "All Requests",
     "/admin/document-types": "Document Details",
   };

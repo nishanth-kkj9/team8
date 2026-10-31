@@ -1,4 +1,4 @@
-# DocDesk — Frontend Architecture & OpenCode Build Specification
+> **Status: historical specification.** This describes the earlier mock-only phase and is retained as design history. The current production app authenticates against CampusOS and uses its DocDesk APIs; see the root README and `src/services/api/`.`r`n`r`n# DocDesk — Frontend Architecture & OpenCode Build Specification
 
 > **Purpose:** Build the complete, responsive, interactive DocDesk frontend first. Do not build a backend or call the real CampusOS API in this phase. Use realistic mock data and a replaceable mock-service layer. After the frontend is complete and tested, integrate the supplied CampusOS API without redesigning the UI.
 >

@@ -46,9 +46,6 @@ export class CampusOsDocDeskService implements DocDeskService {
     if (filters?.doc_type_id) {
       queryParams.doc_type_id = filters.doc_type_id;
     }
-    if (filters?.mine !== undefined) {
-      queryParams.mine = filters.mine;
-    }
     if (filters?.limit !== undefined) {
       queryParams.limit = filters.limit;
     }
@@ -164,7 +161,6 @@ export class CampusOsDocDeskService implements DocDeskService {
   async acknowledgeRequest(requestId: string): Promise<DocRequest> {
     return campusOsClient.post<DocRequest>(
       `/docdesk/requests/${encodeURIComponent(requestId)}/acknowledge`,
-      {},
     );
   }
 

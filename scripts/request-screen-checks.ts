@@ -7,6 +7,9 @@ import { canCreateRequest } from "../src/lib/permissions";
 import type { DocType } from "../src/types/document";
 import type { DemoProfile } from "../src/types/auth";
 
+// Only the HTTP-mocked checks use this origin; production requires the organiser URL.
+process.env.VITE_API_BASE_URL ??= "https://campusos.test";
+
 let passed = 0;
 function check(name: string, fn: () => void): void {
   fn();
@@ -80,6 +83,34 @@ check("request creation posts exactly doc_type_id and trimmed reason", () => {
   assert.equal(String(requestInit?.method), "POST");
   assert.equal(created.request_id, "REQ-REAL-1");
   assert.equal(created.status, "pending");
+});
+
+let acknowledgeInit: RequestInit | undefined;
+globalThis.fetch = async (_input, init) => {
+  acknowledgeInit = init;
+  return new Response(JSON.stringify({ request_id: "REQ-REAL-1", status: "acknowledged" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+};
+await campusOsDocDeskService.acknowledgeRequest("REQ-REAL-1");
+check("acknowledgement is a bodyless POST", () => {
+  assert.equal(acknowledgeInit?.method, "POST");
+  assert.equal(acknowledgeInit?.body, undefined);
+});
+
+let answerInit: RequestInit | undefined;
+globalThis.fetch = async (_input, init) => {
+  answerInit = init;
+  return new Response(JSON.stringify({ request_id: "REQ-REAL-1", status: "answered" }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+};
+await campusOsDocDeskService.answerRequest("REQ-REAL-1", { message: "Your document is ready." });
+check("answer submission uses multipart form data without forcing its Content-Type", () => {
+  assert.ok(answerInit?.body instanceof FormData);
+  assert.equal(new Headers(answerInit?.headers).has("Content-Type"), false);
 });
 
 check("reason validation rejects empty and whitespace-only values", () => {

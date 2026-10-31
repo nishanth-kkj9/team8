@@ -12,7 +12,7 @@
  *
  * Run: bun scripts/phase4-service-checks.ts
  */
-import { mockDocDeskService as svc } from "../src/services/mockDocDeskService";
+import { mockDocDeskService as svc } from "../tests/fixtures/mockDocDeskService";
 import type { DemoProfile } from "../src/types/auth";
 
 // ---- localStorage shim (service persists to localStorage at call time) ----

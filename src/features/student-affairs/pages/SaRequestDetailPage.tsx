@@ -23,7 +23,7 @@ import {
   AnswerComposer,
   type AnswerInput,
 } from "../components/AnswerComposer";
-import { downloadDemoFile } from "../../../lib/download";
+import { downloadFile } from "../../../lib/download";
 import { formatDateTime, formatDateOnly } from "../../../lib/date";
 import { ROLE_LABELS } from "../../../types/auth";
 import {
@@ -175,7 +175,7 @@ export function SaRequestDetailPage() {
     setBusy("document");
     try {
       const file = await docDeskService.downloadAnswerDocument(request.request_id);
-      if (file) downloadDemoFile(file);
+      if (file) downloadFile(file);
     } catch (error) {
       fail(error, "Could not download the document.");
     } finally {
@@ -187,7 +187,7 @@ export function SaRequestDetailPage() {
     setBusy("filled-form");
     try {
       const file = await docDeskService.downloadFilledForm(request.request_id);
-      if (file) downloadDemoFile(file);
+      if (file) downloadFile(file);
     } catch (error) {
       fail(error, "Could not download the filled-in form.");
     } finally {

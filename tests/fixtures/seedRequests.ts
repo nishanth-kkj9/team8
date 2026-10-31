@@ -1,5 +1,5 @@
-import type { DocRequest } from "../types/request";
-import { dateOnlyFromToday, isoDaysAgo } from "../lib/date";
+import type { DocRequest } from "../../src/types/request";
+import { dateOnlyFromToday, isoDaysAgo } from "../../src/lib/date";
 
 /**
  * Seed requests covering every required status/file combination

@@ -114,7 +114,7 @@ export function TurnaroundTimePage() {
   const someSelected = selectedCount > 0 && !allSelected;
 
   // Apply `?selected=a,b,c` deep links. Runs both on a fresh mount and when
-  // the pending list arrives after the first render (mock data loads
+  // the pending list arrives after the first render (CampusOS data loads
   // asynchronously, so the queue is empty on a cold deep link).
   useEffect(() => {
     if (pending.length === 0) return;
@@ -189,7 +189,7 @@ export function TurnaroundTimePage() {
         variant: "success",
       });
     } catch (error) {
-      // All-or-nothing: the mock service rejects the whole batch when any
+      // All-or-nothing: CampusOS rejects the whole batch when any
       // selection is invalid, so no record is partially updated (??5C SA5).
       setConfirmOpen(false);
       toast({

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -39,6 +40,7 @@ export function DocDeskDataProvider({ children }: { children: ReactNode }) {
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadSequence = useRef(0);
 
   const fetchRequestsPage = useCallback(
     async (filters?: RequestFilters): Promise<PaginatedResponse<DocRequest>> => {
@@ -55,25 +57,46 @@ export function DocDeskDataProvider({ children }: { children: ReactNode }) {
   );
 
   const refresh = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     if (!profile) {
       setRequests([]);
       setDocTypes([]);
+      setLoading(false);
+      setError(null);
       return;
     }
     setLoading(true);
     setError(null);
     try {
       docDeskService.setViewer(profile);
-      const [reqPage, dtPage] = await Promise.all([
-        docDeskService.listRequests({ limit: 100 }),
-        docDeskService.listDocumentTypes({ limit: 100 }),
+      const loadAll = async <T extends { request_id?: string; doc_type_id?: string }>(
+        load: (cursor?: string) => Promise<PaginatedResponse<T>>,
+        key: (item: T) => string,
+      ) => {
+        const rows = new Map<string, T>();
+        const seenCursors = new Set<string>();
+        let cursor: string | undefined;
+        do {
+          const page = await load(cursor);
+          page.items.forEach((item) => rows.set(key(item), item));
+          cursor = page.next_cursor ?? undefined;
+          if (cursor && seenCursors.has(cursor)) throw new Error("CampusOS returned a repeated page cursor.");
+          if (cursor) seenCursors.add(cursor);
+        } while (cursor);
+        return [...rows.values()];
+      };
+      const [allRequests, allDocTypes] = await Promise.all([
+        loadAll((cursor) => docDeskService.listRequests({ limit: 100, ...(cursor ? { cursor } : {}) }), (r) => r.request_id),
+        loadAll((cursor) => docDeskService.listDocumentTypes({ limit: 100, ...(cursor ? { cursor } : {}) }), (t) => t.doc_type_id),
       ]);
-      setRequests(reqPage.items);
-      setDocTypes(dtPage.items);
+      if (sequence === loadSequence.current) {
+        setRequests(allRequests as DocRequest[]);
+        setDocTypes(allDocTypes as DocType[]);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load CampusOS data.");
+      if (sequence === loadSequence.current) setError(err instanceof Error ? err.message : "Failed to load CampusOS data.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   }, [profile]);
 

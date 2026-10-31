@@ -1,7 +1,6 @@
 import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
-import { DemoChip } from "../../../components/ui/DemoChip";
 import { Info } from "lucide-react";
 import { ROLE_LABELS } from "../../../types/auth";
 
@@ -39,7 +38,6 @@ export function ProfilePage() {
         title="My Profile"
         description="Read-only profile details. Profiles are managed by the Admin in CampusOS ??? users cannot edit their own."
         crumbs={[{ label: "Requester portal" }, { label: "My Profile" }]}
-        actions={<DemoChip />}
       />
       <Card className="max-w-2xl p-6">
         <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
@@ -56,8 +54,7 @@ export function ProfilePage() {
         </dl>
         <p className="mt-6 flex items-start gap-2 border-t border-line pt-4 text-xs text-ink-500">
           <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Showing the mock profile for this demo login. During API integration this data
-          will come from GET /api/v1/users/me (or /api/v1/admin/me for Admin).
+          Profile details are provided by CampusOS and managed by your campus administrator.
         </p>
       </Card>
     </div>

@@ -1,16 +1,22 @@
 import { ApiError } from "./apiErrors";
 import { getValidToken, notifySessionExpired } from "./sessionStore";
 
-const DEFAULT_BASE_URL = "https://api.campusos.edu";
-
 export function getApiBaseUrl(): string {
-  const envUrl = typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_BASE_URL : undefined;
-  const base = envUrl && envUrl.trim() ? envUrl.trim() : DEFAULT_BASE_URL;
-  return base.replace(/\/+$/, "");
+  const viteUrl = typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_BASE_URL : undefined;
+  const nodeTestUrl = typeof process !== "undefined" ? process.env.VITE_API_BASE_URL : undefined;
+  const envUrl = viteUrl || nodeTestUrl;
+  if (!envUrl?.trim()) {
+    throw new ApiError(0, "CONFIGURATION_ERROR", "VITE_API_BASE_URL is missing. Set it to the CampusOS API base URL supplied by the organisers.");
+  }
+  return envUrl.trim().replace(/\/+$/, "").replace(/\/api\/v1$/i, "");
 }
 
 export function resolveEndpointUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
+    const target = new URL(path);
+    if (target.origin !== new URL(getApiBaseUrl()).origin) {
+      throw new ApiError(0, "INVALID_API_ORIGIN", "CampusOS requests must use the configured API origin.");
+    }
     return path;
   }
   const baseUrl = getApiBaseUrl();
@@ -53,7 +59,10 @@ export async function apiFetch(
   const url = resolveEndpointUrl(path);
   const headers = new Headers(options.headers || {});
 
-  const token = getValidToken();
+  const urlObject = new URL(url);
+  const baseOrigin = new URL(getApiBaseUrl()).origin;
+  const isLogin = /\/api\/v1\/auth\/(?:admin\/)?login\/?$/.test(urlObject.pathname);
+  const token = urlObject.origin === baseOrigin && !isLogin ? getValidToken() : null;
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
