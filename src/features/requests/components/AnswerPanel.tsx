@@ -15,7 +15,7 @@ interface AnswerPanelProps {
 }
 
 /**
- * Answer & document panel (§5B R5): the Student Affairs response message,
+ * Answer & document panel (??5B R5): the Student Affairs response message,
  * responder details, and the optional answer document / returned filled-in
  * form as metadata cards with download actions. The message is always
  * present; documents are optional.
@@ -45,9 +45,9 @@ export function AnswerPanel({
         <div>
           <h2 className="text-sm font-semibold text-ink-900">Answer from Student Affairs</h2>
           <p className="text-xs text-ink-500">
-            {answer.answered_by_name ?? "Student Affairs"} ·{" "}
+            {answer.answered_by_name ?? "Student Affairs"} ??{" "}
             {answer.answered_at ? formatDateTime(answer.answered_at) : ""}
-            {wasEdited ? ` · edited ${answer.updated_at ? formatDateTime(answer.updated_at) : ""}` : ""}
+            {wasEdited ? ` ?? edited ${answer.updated_at ? formatDateTime(answer.updated_at) : ""}` : ""}
           </p>
         </div>
       </CardHeader>

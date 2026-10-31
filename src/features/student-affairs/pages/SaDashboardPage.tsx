@@ -38,7 +38,7 @@ function QueueRow({ request }: { request: DocRequest }) {
             {request.doc_type_name}
           </span>
           <span className="block truncate text-xs text-ink-500">
-            {request.requested_by_name} · {request.requested_by_dept ?? request.requested_by_role}
+            {request.requested_by_name} ?? {request.requested_by_dept ?? request.requested_by_role}
           </span>
         </span>
         <RequestStatusBadge status={request.status} />
@@ -71,7 +71,7 @@ function AttentionRow({
           {request.request_id}
         </span>
         <span className="min-w-0 flex-1 truncate text-xs text-ink-600">
-          {request.doc_type_name} · {request.requested_by_name}
+          {request.doc_type_name} ?? {request.requested_by_name}
         </span>
         <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${toneStyles[tone]}`}>
           {note}
@@ -82,7 +82,7 @@ function AttentionRow({
 }
 
 /**
- * Screen SA1 — Student Affairs dashboard (§5C SA1): institution-wide counters,
+ * Screen SA1 ??? Student Affairs dashboard (??5C SA1): institution-wide counters,
  * operational panels (latest pending, TAT attention, awaiting-requester,
  * returned forms, recent responses) and quick actions.
  */
@@ -96,7 +96,7 @@ export function SaDashboardPage() {
   const pending = requests.filter((r) => r.status === "pending");
   const latestPending = [...pending].sort(NEWEST_FIRST).slice(0, 5);
 
-  // Frontend-derived TAT attention (§5C SA1: no API "overdue" field exists).
+  // Frontend-derived TAT attention (??5C SA1: no API "overdue" field exists).
   const today = todayDateOnly();
   const soonCutoff = dateOnlyFromToday(3);
   const tatAttention = pending
@@ -121,11 +121,12 @@ export function SaDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Student Affairs dashboard"
-        description={`Welcome, ${firstName} — institution-wide document request operations.`}
+        description={`Welcome, ${firstName} ??? institution-wide document request operations.`}
         crumbs={[{ label: "Student Affairs" }, { label: "Dashboard" }]}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Requests" value={counts.total} icon={Inbox} />
         <StatCard label="Pending" value={counts.pending} icon={Clock3} tone="amber" />
         <StatCard label="Answered" value={counts.answered} icon={MailCheck} tone="blue" />
         <StatCard
@@ -186,7 +187,7 @@ export function SaDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* min-w-0 keeps truncated quote text from inflating this grid
-            item's min-content width and blowing out the layout (§Phase 6). */}
+            item's min-content width and blowing out the layout (??Phase 6). */}
         <div className="min-w-0 space-y-6 lg:col-span-2">
           <section aria-labelledby="sa-latest-pending" className="space-y-3">
             <div className="flex items-center justify-between">
@@ -201,10 +202,10 @@ export function SaDashboardPage() {
               </Link>
             </div>
             {loading && requests.length === 0 ? (
-              <Card className="p-8 text-center text-sm text-ink-500">Loading demo data…</Card>
+              <Card className="p-8 text-center text-sm text-ink-500">Loading demo data???</Card>
             ) : latestPending.length === 0 ? (
               <Card className="p-8 text-center text-sm text-ink-500">
-                Nothing pending — every request has been answered.
+                Nothing pending ??? every request has been answered.
               </Card>
             ) : (
               <ul className="space-y-2">
@@ -236,7 +237,7 @@ export function SaDashboardPage() {
                           {request.request_id}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm text-ink-800">
-                          {request.doc_type_name} · {request.requested_by_name}
+                          {request.doc_type_name} ?? {request.requested_by_name}
                         </span>
                         <span className="text-xs text-ink-400">
                           {request.answer!.answered_at
@@ -246,7 +247,7 @@ export function SaDashboardPage() {
                         <RequestStatusBadge status={request.status} />
                       </span>
                       <span className="mt-1 block truncate text-xs text-ink-500">
-                        “{request.answer!.message}”
+                        ???{request.answer!.message}???
                       </span>
                     </Link>
                   </li>
@@ -281,7 +282,7 @@ export function SaDashboardPage() {
                       tone={request.tat!.expected_by < today ? "amber" : "blue"}
                       note={
                         request.tat!.expected_by < today
-                          ? `Overdue — was due ${formatDateOnly(request.tat!.expected_by)}`
+                          ? `Overdue ??? was due ${formatDateOnly(request.tat!.expected_by)}`
                           : `Due ${formatDateOnly(request.tat!.expected_by)}`
                       }
                     />
@@ -354,9 +355,9 @@ export function SaDashboardPage() {
       <div className="flex items-start gap-2 rounded-card border border-primary-100 bg-primary-50 px-4 py-3 text-xs text-primary-800">
         <Inbox aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <p>
-          Student Affairs — DocDesk processing desk. You are signed in as {profile?.name}
+          Student Affairs ??? DocDesk processing desk. You are signed in as {profile?.name}
           {profile && isStudentAffairs(profile)
-            ? " — office staff in Student Affairs, the central processing role. Answer requests from the queue or a request page."
+            ? " ??? office staff in Student Affairs, the central processing role. Answer requests from the queue or a request page."
             : "."}
         </p>
       </div>

@@ -40,7 +40,7 @@ const VARIANT_STYLES: Record<
   info: { icon: Info, classes: "border-primary-200 bg-primary-50 text-primary-900" },
 };
 
-/** Toast / notification area for demo action feedback (§4.1) — not a claim of real server notifications. */
+/** Toast / notification area for demo action feedback (??4.1) ??? not a claim of real server notifications. */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const nextId = useRef(1);

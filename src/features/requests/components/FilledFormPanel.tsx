@@ -20,7 +20,7 @@ import type { DocRequest } from "../../../types/request";
 type Busy = "upload" | "remove" | "download" | null;
 
 /**
- * Screen R6 — Filled-in Form upload (§5B R6). Lives on the requester's request
+ * Screen R6 ??? Filled-in Form upload (??5B R6). Lives on the requester's request
  * detail page once the request is answered. Upload / replace / download /
  * remove are only enabled while the API's lifecycle conditions hold: the
  * request is `answered`, an answer document exists, and it is not yet
@@ -152,7 +152,7 @@ export function FilledFormPanel({
         </div>
       </CardHeader>
       <CardBody className="space-y-3">
-        {/* Explanatory disabled states — never a dead upload button (§5B R6). */}
+        {/* Explanatory disabled states ??? never a dead upload button (??5B R6). */}
         {request.status === "pending" ? (
           <p className="rounded-control border border-dashed border-line bg-slate-50/60 px-3 py-2.5 text-xs leading-5 text-ink-500">
             This request is still pending. Once Student Affairs answers it with an
@@ -219,8 +219,8 @@ export function FilledFormPanel({
             </div>
             <p className="text-xs text-ink-500">
               {replacing
-                ? "Uploading again replaces the current file — the previous upload is discarded."
-                : "PDF, Word (.docx), JPEG or PNG · max 10 MB."}
+                ? "Uploading again replaces the current file ??? the previous upload is discarded."
+                : "PDF, Word (.docx), JPEG or PNG ?? max 10 MB."}
               {!isAcknowledged ? " You can still replace or remove it before acknowledging." : ""}
             </p>
             {fileError ? (
@@ -233,13 +233,13 @@ export function FilledFormPanel({
         ) : isAcknowledged && request.filled_form ? (
           <p className="flex items-start gap-1.5 text-xs leading-5 text-ink-500">
             <Lock aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-400" />
-            This request is acknowledged — the filled-in form is kept for records and
+            This request is acknowledged ??? the filled-in form is kept for records and
             can no longer be replaced or removed.
           </p>
         ) : null}
       </CardBody>
 
-      {/* Remove confirmation (§9.2) */}
+      {/* Remove confirmation (??9.2) */}
       <Modal
         open={removeOpen}
         onClose={() => setRemoveOpen(false)}
@@ -262,7 +262,7 @@ export function FilledFormPanel({
         <p>
           This removes <strong>{request.filled_form?.filename}</strong> from{" "}
           <strong>{request.request_id}</strong>. Student Affairs will no longer see a
-          returned form — you can upload a replacement any time before acknowledging
+          returned form ??? you can upload a replacement any time before acknowledging
           the request.
         </p>
       </Modal>

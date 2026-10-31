@@ -3,8 +3,8 @@ import { STATUS_LABELS, type DocDeskStatus } from "../../types/request";
 import { cn } from "../../lib/cn";
 
 /*
- * Status chips never rely on colour alone — the status text is always shown
- * (§10.2). API statuses: pending / answered / acknowledged.
+ * Status chips never rely on colour alone ??? the status text is always shown
+ * (??10.2). API statuses: pending / answered / acknowledged.
  */
 
 const REQUEST_STYLES: Record<DocDeskStatus, { chip: string; dot: string }> = {

@@ -1,12 +1,11 @@
-import type { DownloadableFile } from "../services/docDeskService.types";
+import type { DownloadableDemoFile } from "../services/docDeskService.types";
 
 /**
- * Triggers a browser download for a downloaded file blob with its authoritative filename.
+ * Trigger a browser download for a demo file blob (??5A R5, ??8.3).
+ * In the API phase, downloads will be served by the authenticated
+ * `GET /requests/{id}/document` and `/filled-form` endpoints instead.
  */
-export function downloadFile(file: DownloadableFile): void {
-  if (typeof window === "undefined" || !window.URL || !window.document) {
-    return;
-  }
+export function downloadDemoFile(file: DownloadableDemoFile): void {
   const url = URL.createObjectURL(file.blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -16,5 +15,3 @@ export function downloadFile(file: DownloadableFile): void {
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
-
-export const downloadDemoFile = downloadFile;

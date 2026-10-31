@@ -26,7 +26,7 @@ type Filter = "all" | DocumentTypeStatus;
 type Busy = "create" | "update" | "status" | "delete" | null;
 
 /**
- * Screen SA4 — Document Type Manager (§5C SA4, starred bonus). Student Affairs
+ * Screen SA4 ??? Document Type Manager (??5C SA4, starred bonus). Student Affairs
  * curates the requestable catalog: add, edit, archive, restore and delete.
  * Archived types disappear from requester dropdowns but existing requests keep
  * their stored document label.
@@ -134,7 +134,7 @@ export function DocumentTypesPage() {
         }
       />
 
-      {/* Active / Archived filters (§5C SA4) */}
+      {/* Active / Archived filters (??5C SA4) */}
       <div role="tablist" aria-label="Filter document types by status" className="flex flex-wrap gap-1.5">
         {(
           [
@@ -173,7 +173,7 @@ export function DocumentTypesPage() {
           title={filter === "archived" ? "No archived types" : "No document types"}
           description={
             filter === "archived"
-              ? "Nothing is archived right now — every type is requestable."
+              ? "Nothing is archived right now ??? every type is requestable."
               : "Add the first document type so requesters can submit requests."
           }
           action={
@@ -187,7 +187,7 @@ export function DocumentTypesPage() {
         />
       ) : (
         <>
-          {/* Desktop table — scrolls horizontally inside the card when the
+          {/* Desktop table ??? scrolls horizontally inside the card when the
               viewport is narrow instead of clipping row actions. */}
           <div className="hidden overflow-x-auto rounded-card border border-line bg-surface shadow-card md:block">
             <table className="w-full min-w-[44rem] text-left text-sm">
@@ -212,13 +212,13 @@ export function DocumentTypesPage() {
                       ) : null}
                     </td>
                     <td className="max-w-[22rem] px-4 py-3 text-xs text-ink-600">
-                      {docType.description ?? <span className="text-ink-400">—</span>}
+                      {docType.description ?? <span className="text-ink-400">???</span>}
                     </td>
                     <td className="px-4 py-3">
                       <DocTypeStatusBadge status={docType.status} />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-500">
-                      {docType.created_at ? formatDateOnly(docType.created_at) : "—"}
+                      {docType.created_at ? formatDateOnly(docType.created_at) : "???"}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
@@ -316,7 +316,7 @@ export function DocumentTypesPage() {
         </>
       )}
 
-      {/* Create / edit modal (§5C SA4 validation: name 3–80, unique; description optional).
+      {/* Create / edit modal (??5C SA4 validation: name 3???80, unique; description optional).
           The `key` remounts the form with fresh state whenever the target changes. */}
       <DocTypeFormModal
         key={formOpen ? `open-${editing?.doc_type_id ?? "new"}` : "closed"}
@@ -341,7 +341,7 @@ export function DocumentTypesPage() {
         onBusyChange={setBusy}
       />
 
-      {/* Delete confirmation (§9.2) */}
+      {/* Delete confirmation (??9.2) */}
       <Modal
         open={deleting !== null}
         onClose={() => setDeleting(null)}
@@ -460,7 +460,7 @@ function DocTypeFormModal({
           hint={
             errors.name
               ? undefined
-              : `${LIMITS.docTypeNameMin}–${LIMITS.docTypeNameMax} characters, unique across the catalog.`
+              : `${LIMITS.docTypeNameMin}???${LIMITS.docTypeNameMax} characters, unique across the catalog.`
           }
         >
           <Input
@@ -476,7 +476,7 @@ function DocTypeFormModal({
         <Field
           label="Description"
           htmlFor="doc-type-description"
-          hint="Optional — shown to requesters next to the type in dropdown hints."
+          hint="Optional ??? shown to requesters next to the type in dropdown hints."
         >
           <Textarea
             id="doc-type-description"

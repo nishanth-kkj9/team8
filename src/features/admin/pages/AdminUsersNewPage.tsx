@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Eye, EyeOff, Loader2, ShieldCheck, UserPlus } from "lucide-react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Check, Copy, Eye, EyeOff, Loader2, ShieldCheck, UserPlus } from "lucide-react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Field, Input } from "../../../components/ui/Field";
 import { useAuth } from "../../../context/AuthContext";
@@ -38,7 +38,15 @@ export function AdminUsersNewPage() {
     email: string;
     otp?: string;
   } | null>(null);
-  const [showOtp, setShowOtp] = useState(false);
+  const [showOtp, setShowOtp] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const adminDomain = useMemo(() => {
+    if (profile?.email_id && profile.email_id.includes("@")) {
+      return profile.email_id.split("@")[1]?.toLowerCase() ?? "team8.com";
+    }
+    return "team8.com";
+  }, [profile?.email_id]);
 
   if (status === "restoring") {
     return (
@@ -59,22 +67,25 @@ export function AdminUsersNewPage() {
       next.name = "Name must be 2–100 characters.";
     }
 
-    if (!/^[A-Z0-9]{5,20}$/.test(form.usn.trim())) {
-      next.usn = "USN must be 5–20 uppercase letters/digits.";
+    if (!/^[A-Za-z0-9]{5,20}$/.test(form.usn.trim())) {
+      next.usn = "USN must be 5–20 alphanumeric characters (e.g. 1NT22CS001).";
     }
 
     if (!form.dept.trim() || form.dept.trim().length < 2 || form.dept.trim().length > 60) {
-      next.dept = "Department must be 2–60 characters.";
+      next.dept = "Department must be 2–60 characters (e.g. CSE).";
     }
 
     if (!isValidEmail(form.email_id)) {
       next.email_id = "Enter a valid email address.";
-    } else if (!form.email_id.trim().toLowerCase().endsWith("@team8.com")) {
-      next.email_id = "Email must use the Team 8 domain.";
+    } else if (
+      adminDomain &&
+      !form.email_id.trim().toLowerCase().endsWith(`@${adminDomain}`)
+    ) {
+      next.email_id = `Email must use the team domain (@${adminDomain}).`;
     }
 
     if (!/^\+?\d{10,15}$/.test(form.phone_number.trim())) {
-      next.phone_number = "Phone must be 10–15 digits with optional leading +.";
+      next.phone_number = "Phone number must be 10–15 digits.";
     }
 
     setErrors(next);
@@ -84,8 +95,26 @@ export function AdminUsersNewPage() {
   const handleChange = (field: keyof StudentFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: "" }));
-    setCreatedStudent(null);
-    setShowOtp(false);
+  };
+
+  const handleCopyOtp = async () => {
+    if (!createdStudent?.otp) return;
+    try {
+      await navigator.clipboard.writeText(createdStudent.otp);
+      setCopied(true);
+      toast({
+        title: "OTP copied to clipboard",
+        description: `Student OTP: ${createdStudent.otp}`,
+        variant: "success",
+      });
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast({
+        title: "Could not copy",
+        description: "Please select and copy the OTP manually.",
+        variant: "error",
+      });
+    }
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -95,8 +124,9 @@ export function AdminUsersNewPage() {
     }
 
     setCreatedStudent(null);
-    setShowOtp(false);
+    setCopied(false);
     setSubmitting(true);
+
     try {
       const payload = {
         role: "student",
@@ -113,6 +143,7 @@ export function AdminUsersNewPage() {
         email_id?: unknown;
         otp?: unknown;
       }>("/admin/users", payload);
+
       const userPayload = response?.user ?? response ?? {};
       const createdName = String(userPayload.name ?? payload.name).trim();
       const createdEmail = String(userPayload.email_id ?? payload.email_id).trim();
@@ -123,9 +154,10 @@ export function AdminUsersNewPage() {
         email: createdEmail || payload.email_id,
         ...(createdOtp ? { otp: createdOtp } : {}),
       });
+
       toast({
-        title: "Student created successfully",
-        description: `${createdName || payload.name} (${createdEmail || payload.email_id}) was registered.`,
+        title: "Student registered successfully",
+        description: `Generated OTP for ${createdName || payload.name}`,
         variant: "success",
       });
 
@@ -135,15 +167,15 @@ export function AdminUsersNewPage() {
       let message = "Student registration failed.";
       if (err instanceof ApiError) {
         if (err.status === 409) {
-          message = "This student already exists. Check the email or USN and try again.";
+          message = "This student already exists. Check the email or USN.";
         } else if (err.status === 422 && err.code === "EMAIL_DOMAIN_MISMATCH") {
-          message = "Only Team 8 email addresses are allowed for student registration.";
+          message = `Email domain must match the team domain (@${adminDomain}).`;
         } else if (err.status === 422 && err.code === "VALIDATION_ERROR") {
           message = "Please review the form and correct the invalid values.";
         } else if (err.status === 401) {
           message = "Your session expired. Please sign in again.";
         } else if (err.status === 403 || err.code === "FORBIDDEN") {
-          message = "Only the Team 8 admin can register students.";
+          message = "Only the Admin can register students.";
         } else {
           message = err.message;
         }
@@ -159,95 +191,168 @@ export function AdminUsersNewPage() {
     }
   };
 
-  const successMessage = useMemo(
-    () => (createdStudent ? `Student ${createdStudent.name} (${createdStudent.email}) has been created.` : ""),
-    [createdStudent],
-  );
-
   return (
-    <div className="space-y-6 p-6 lg:p-8">
-      <header className="flex items-start justify-between gap-4 rounded-card border border-line bg-surface p-5 shadow-card">
+    <div className="space-y-6">
+      <header className="flex flex-col gap-3 rounded-card border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-600">Admin</p>
-          <h1 className="mt-2 text-2xl font-semibold text-ink-900">Register Student</h1>
-          <p className="mt-1 text-sm text-ink-500">Create a CampusOS student account to provide access to DocDesk.</p>
+          <nav aria-label="Breadcrumb" className="text-xs text-ink-500">
+            <Link to="/admin/dashboard" className="hover:text-ink-800">Admin</Link>
+            <span className="mx-1.5 text-ink-400">/</span>
+            <span className="text-ink-800 font-medium">Register Student</span>
+          </nav>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-900">Register Student & Generate OTP</h1>
+          <p className="mt-0.5 text-sm text-ink-500">
+            Create an official student account and obtain the sign-in OTP for DocDesk access.
+          </p>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700">
+        <div className="inline-flex items-center gap-1.5 self-start rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 sm:self-auto">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Admin-only operation
+          Admin-only
         </div>
       </header>
 
-      {successMessage ? (
-        <div className="rounded-card border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <p className="font-medium">Registration successful</p>
-          <p className="mt-1">{successMessage}</p>
-          <p className="mt-3 text-emerald-700">
-            The student signs in with their registered email and this account-specific OTP.
-          </p>
-          {createdStudent?.otp ? (
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-control border border-emerald-200 bg-white px-3 py-2">
-              <div>
-                <p className="text-xs font-medium text-ink-500">Student sign-in OTP</p>
-                <code className="text-base font-semibold tracking-widest text-ink-900">
-                  {showOtp ? createdStudent.otp : "••••••"}
-                </code>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowOtp((visible) => !visible)}
-                aria-label={showOtp ? "Hide student OTP" : "Show student OTP"}
-                className="rounded p-2 text-ink-500 hover:bg-emerald-50 hover:text-ink-800"
-              >
-                {showOtp ? <EyeOff aria-hidden className="h-4 w-4" /> : <Eye aria-hidden className="h-4 w-4" />}
-              </button>
+      {createdStudent && (
+        <div className="rounded-card border-2 border-emerald-300 bg-emerald-50/80 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 font-bold">
+              ✓
             </div>
-          ) : (
-            <p className="mt-2 text-sm text-amber-800">
-              CampusOS did not include an OTP in the response. Ask the administrator to retrieve or regenerate it.
-            </p>
-          )}
-          <p className="mt-2 text-xs text-emerald-700">
-            Share the OTP securely with the student. It is only held on this page and is not saved.
-          </p>
-        </div>
-      ) : null}
+            <div className="min-w-0 flex-1 space-y-3">
+              <div>
+                <h2 className="text-base font-semibold text-emerald-950">
+                  Registration Successful!
+                </h2>
+                <p className="mt-0.5 text-sm text-emerald-800">
+                  Student <strong>{createdStudent.name}</strong> (<code>{createdStudent.email}</code>) is registered.
+                </p>
+              </div>
 
-      <form onSubmit={handleSubmit} noValidate className="rounded-card border border-line bg-surface p-6 shadow-card">
-        {errors.form ? (
-          <div role="alert" className="mb-4 rounded-control border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {createdStudent.otp ? (
+                <div className="rounded-control border border-emerald-300 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                        Generated Student Sign-in OTP
+                      </p>
+                      <div className="mt-1 flex items-center gap-3">
+                        <code className="text-2xl font-mono font-bold tracking-widest text-emerald-800">
+                          {showOtp ? createdStudent.otp : "••••••"}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => setShowOtp(!showOtp)}
+                          aria-label={showOtp ? "Hide OTP" : "Show OTP"}
+                          className="rounded p-1.5 text-ink-500 hover:bg-slate-100"
+                        >
+                          {showOtp ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCopyOtp}
+                      className="inline-flex items-center gap-2 rounded-control bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-800"
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? "Copied!" : "Copy OTP"}
+                    </button>
+                  </div>
+                  <p className="mt-3 text-xs text-ink-600">
+                    Give this OTP and their email (<code>{createdStudent.email}</code>) to the student. They will enter it on the DocDesk Sign-in page.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  Student created, but backend OTP was not returned directly. The student can sign in with the team-wide OTP.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} noValidate className="rounded-card border border-line bg-surface p-6 shadow-card space-y-6">
+        <div>
+          <h2 className="text-base font-semibold text-ink-900">Student Profile Information</h2>
+          <p className="text-xs text-ink-500">All fields are required by CampusOS to register a student.</p>
+        </div>
+
+        {errors.form && (
+          <div role="alert" className="rounded-control border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
             {errors.form}
           </div>
-        ) : null}
+        )}
 
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Full name" htmlFor="name" required error={errors.name}>
-            <Input id="name" value={form.name} onChange={(event) => handleChange("name", event.target.value)} placeholder="Student Name" invalid={!!errors.name} />
+            <Input
+              id="name"
+              value={form.name}
+              onChange={(e) => handleChange("name", e.target.value)}
+              placeholder="e.g. Riya Sharma"
+              invalid={!!errors.name}
+            />
           </Field>
 
-          <Field label="USN" htmlFor="usn" required error={errors.usn}>
-            <Input id="usn" value={form.usn} onChange={(event) => handleChange("usn", event.target.value.toUpperCase())} placeholder="1NT21CS047" invalid={!!errors.usn} />
+          <Field label="USN" htmlFor="usn" required error={errors.usn} hint="5–20 alphanumeric chars">
+            <Input
+              id="usn"
+              value={form.usn}
+              onChange={(e) => handleChange("usn", e.target.value.toUpperCase())}
+              placeholder="e.g. 1NT22CS001"
+              invalid={!!errors.usn}
+            />
           </Field>
 
           <Field label="Department" htmlFor="dept" required error={errors.dept}>
-            <Input id="dept" value={form.dept} onChange={(event) => handleChange("dept", event.target.value)} placeholder="CSE" invalid={!!errors.dept} />
+            <Input
+              id="dept"
+              value={form.dept}
+              onChange={(e) => handleChange("dept", e.target.value)}
+              placeholder="e.g. CSE"
+              invalid={!!errors.dept}
+            />
           </Field>
 
-          <Field label="Email address" htmlFor="email_id" required error={errors.email_id}>
-            <Input id="email_id" type="email" value={form.email_id} onChange={(event) => handleChange("email_id", event.target.value)} placeholder="student@team8.com" invalid={!!errors.email_id} />
+          <Field
+            label="Email address"
+            htmlFor="email_id"
+            required
+            error={errors.email_id}
+            hint={`Must end with @${adminDomain}`}
+          >
+            <Input
+              id="email_id"
+              type="email"
+              value={form.email_id}
+              onChange={(e) => handleChange("email_id", e.target.value)}
+              placeholder={`student@${adminDomain}`}
+              invalid={!!errors.email_id}
+            />
           </Field>
 
           <div className="md:col-span-2">
-            <Field label="Phone number" htmlFor="phone_number" required error={errors.phone_number}>
-              <Input id="phone_number" value={form.phone_number} onChange={(event) => handleChange("phone_number", event.target.value)} placeholder="9876543210" invalid={!!errors.phone_number} />
+            <Field label="Phone number" htmlFor="phone_number" required error={errors.phone_number} hint="10–15 digits">
+              <Input
+                id="phone_number"
+                type="tel"
+                value={form.phone_number}
+                onChange={(e) => handleChange("phone_number", e.target.value)}
+                placeholder="9876543210"
+                invalid={!!errors.phone_number}
+              />
             </Field>
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={() => navigate("/admin/dashboard")}>Cancel</Button>
+        <div className="flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:justify-end">
+          <Button type="button" variant="secondary" onClick={() => navigate("/admin/dashboard")}>
+            Cancel
+          </Button>
           <Button type="submit" isLoading={submitting}>
-            <UserPlus className="h-4 w-4" /> Register student
+            <UserPlus className="h-4 w-4" />
+            Register Student & Generate OTP
           </Button>
         </div>
       </form>

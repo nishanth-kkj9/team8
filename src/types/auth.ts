@@ -1,5 +1,5 @@
 /** CampusOS role vocabulary (ARCHITECTURE.md §3, §6).
- * Do not rename these fields — they mirror the future API profile payloads.
+ * Do not rename these fields — they mirror the API profile payloads.
  */
 export type CampusRole = "student" | "faculty" | "office_staff" | "admin";
 

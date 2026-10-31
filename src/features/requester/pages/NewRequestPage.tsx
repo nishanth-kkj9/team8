@@ -1,47 +1,151 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FilePlus2, Inbox } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle, FilePlus2, Inbox, Loader2, RefreshCw } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
+import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useToast } from "../../../context/ToastContext";
+import { ApiError } from "../../../services/api/apiErrors";
 import { docDeskService } from "../../../services/serviceProvider";
+import type { DocType } from "../../../types/document";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
+import { Button } from "../../../components/ui/Button";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { RequestForm, type RequestFormValues } from "../../requests/components/RequestForm";
+import { loadActiveDocTypes } from "../utils/loadActiveDocTypes";
 
-/**
- * Screen R2 — Request a Document (§5B R2). Submits through the mock service;
- * on success the new pending request's detail page acts as the confirmation.
- */
+function describeSubmitError(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return error instanceof Error
+      ? `Could not reach CampusOS. Check your connection and try again. (${error.message})`
+      : "Could not submit your request. Please try again.";
+  }
+
+  const details = Array.isArray(error.details)
+    ? error.details
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object") {
+            const detail = item as Record<string, unknown>;
+            return [detail.field, detail.message].filter(Boolean).join(": ");
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(" ")
+    : error.details && typeof error.details === "object"
+      ? Object.values(error.details as Record<string, unknown>)
+          .filter((value): value is string => typeof value === "string")
+          .join(" ")
+      : typeof error.details === "string"
+        ? error.details
+        : "";
+
+  switch (error.status) {
+    case 400: return `CampusOS rejected the request: ${error.message}${details ? ` ${details}` : ""}`;
+    case 403: return "Your account is not permitted to create this request.";
+    case 404: return `The selected document type or request endpoint was not found: ${error.message}`;
+    case 409: return `This request conflicts with the current records: ${error.message}`;
+    case 422: return `Please check the request details: ${details || error.message}`;
+    case 429: return error.retryAfterSeconds !== undefined
+      ? `Too many requests. Please retry in ${error.retryAfterSeconds} seconds.`
+      : error.message;
+    default:
+      if (error.status >= 500) return `CampusOS is temporarily unavailable. Your form is saved here; please retry. (${error.message})`;
+      return `${error.message}${details ? ` ${details}` : ""}`;
+  }
+}
+
 export function NewRequestPage() {
-  const { docTypes, refresh } = useDocDeskData();
+  const { refresh } = useDocDeskData();
+  const { signOut } = useDemoAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isStudentAffairs = location.pathname.startsWith("/sa/");
+  const routeBase = isStudentAffairs ? "/sa" : "/app";
+  const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  const [typesLoading, setTypesLoading] = useState(true);
+  const [typesError, setTypesError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [retrySeconds, setRetrySeconds] = useState(0);
   const [formError, setFormError] = useState<string | null>(null);
+  const submitLock = useRef(false);
 
-  const activeTypes = useMemo(
-    () => docTypes.filter((docType) => docType.status === "active"),
-    [docTypes],
-  );
+  const loadDocTypes = useCallback(async (signal: AbortSignal) => {
+    setTypesLoading(true);
+    setTypesError(null);
+    try {
+      if (!signal.aborted) {
+        const loaded = await loadActiveDocTypes(docDeskService, () => signal.aborted);
+        if (!signal.aborted) setDocTypes(loaded);
+      }
+    } catch (error) {
+      if (!signal.aborted) {
+        setTypesError(error instanceof Error
+          ? `Could not load active document types from CampusOS. ${error.message}`
+          : "Could not load active document types from CampusOS.");
+      }
+    } finally {
+      if (!signal.aborted) setTypesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadDocTypes(controller.signal);
+    return () => controller.abort();
+  }, [loadDocTypes, retry]);
+
+  useEffect(() => {
+    if (retrySeconds <= 0) return;
+    const timer = window.setTimeout(() => setRetrySeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [retrySeconds]);
 
   const onSubmit = async (values: RequestFormValues) => {
+    if (submitLock.current || retrySeconds > 0) return;
+    submitLock.current = true;
     setSubmitting(true);
     setFormError(null);
     try {
-      const created = await docDeskService.createRequest(values);
-      await refresh();
+      const selectedType = docTypes.find(
+        (type) => type.doc_type_id === values.doc_type_id && type.status === "active",
+      );
+      if (!selectedType) {
+        setFormError("Select an active document type before submitting.");
+        return;
+      }
+
+      const created = await docDeskService.createRequest({
+        doc_type_id: selectedType.doc_type_id,
+        reason: values.reason.trim(),
+      });
+      if (!created.request_id) {
+        throw new Error("CampusOS confirmed the request but did not return a request ID.");
+      }
+
       toast({
         title: `Request ${created.request_id} submitted`,
-        description: `${created.doc_type_name} — status: pending.`,
+        description: `Status: ${created.status}.`,
         variant: "success",
       });
-      navigate(`/app/requests/${created.request_id}`);
+      await refresh();
+      navigate(`${routeBase}/requests/${encodeURIComponent(created.request_id)}`);
     } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Could not submit the request.",
-      );
+      if (error instanceof ApiError && error.status === 429 && error.retryAfterSeconds !== undefined) {
+        setRetrySeconds(error.retryAfterSeconds);
+      }
+      if (error instanceof ApiError && error.status === 401) {
+        signOut();
+        signOut();
+        navigate("/login", { replace: true, state: { from: `${routeBase}/requests/new` } });
+        return;
+      }
+      setFormError(describeSubmitError(error));
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   };
@@ -50,42 +154,53 @@ export function NewRequestPage() {
     <div className="space-y-6">
       <PageHeader
         title="Request a Document"
-        description="Submit a new document request to Student Affairs. You will see its progress on your dashboard and in My Requests."
-        crumbs={[{ label: "Requester portal", to: "/app/dashboard" }, { label: "Request a Document" }]}
+        description="Request an official academic document from Student Affairs. Select the document you need and explain your reason."
+        crumbs={[{ label: isStudentAffairs ? "Student Affairs" : "Requester portal", to: `${routeBase}/dashboard` }, { label: "Request a Document" }]}
       />
 
-      {activeTypes.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title="No document types are active"
-          description="Student Affairs has not made any document types available for new requests. Please check back later."
-        />
-      ) : (
-        <Card className="max-w-2xl">
-          <CardHeader>
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
-              <FilePlus2 aria-hidden className="h-4 w-4 text-primary-700" />
-              New document request
-            </h2>
-            <p className="text-xs text-ink-500">
-              Requests are reviewed by the Student Affairs office.
-            </p>
-          </CardHeader>
-          <CardBody>
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+            <FilePlus2 aria-hidden className="h-4 w-4 text-primary-700" />
+            New Document Request
+          </h2>
+          <p className="text-xs text-ink-500">Requests are reviewed by the Student Affairs office.</p>
+        </CardHeader>
+        <CardBody>
+          {typesLoading ? (
+            <div role="status" className="flex items-center gap-2 py-6 text-sm text-ink-500">
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+              Loading active document types…
+            </div>
+          ) : typesError ? (
+            <div role="alert" className="space-y-3 rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p className="flex items-start gap-2"><AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />{typesError}</p>
+              <Button type="button" variant="secondary" onClick={() => setRetry((value) => value + 1)}>
+                <RefreshCw aria-hidden className="h-4 w-4" /> Retry
+              </Button>
+            </div>
+          ) : docTypes.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="No active document types"
+              description="No active document types are currently available. Please contact Student Affairs."
+            />
+          ) : (
             <RequestForm
-              docTypes={activeTypes}
+              docTypes={docTypes}
               mode="create"
               showRequesterDetails
-              submitLabel="Submit Request"
+              submitLabel={retrySeconds > 0 ? `Retry in ${retrySeconds}s` : "Submit Request"}
               submitting={submitting}
+              submitDisabled={retrySeconds > 0}
               formError={formError}
               onSubmit={onSubmit}
-              onCancel={() => navigate("/app/requests")}
+              onCancel={() => navigate(`${routeBase}/requests`)}
               idPrefix="new-request"
             />
-          </CardBody>
-        </Card>
-      )}
+          )}
+        </CardBody>
+      </Card>
     </div>
   );
 }

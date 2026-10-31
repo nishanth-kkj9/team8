@@ -34,7 +34,7 @@ function matchesTab(request: DocRequest, tab: Tab): boolean {
 }
 
 /**
- * Screen SA6 — Filled Form Review (§5C SA6, starred bonus). Shows answered
+ * Screen SA6 ??? Filled Form Review (??5C SA6, starred bonus). Shows answered
  * requests carrying an answer document, split by whether the requester has
  * uploaded the filled-in form back, plus acknowledged records for view /
  * download only. SA can read and download filled-in forms; upload and removal
@@ -92,7 +92,7 @@ export function SaFilledFormsPage() {
         crumbs={[{ label: "Student Affairs", to: "/sa/dashboard" }, { label: "Filled Forms to Review" }]}
       />
 
-      {/* Filters (§5C SA6) */}
+      {/* Filters (??5C SA6) */}
       <div role="tablist" aria-label="Filter filled forms by stage" className="flex flex-wrap gap-1.5">
         {TABS.map(({ value, label }) => {
           const active = value === tab;
@@ -149,7 +149,7 @@ export function SaFilledFormsPage() {
         />
       ) : (
         <>
-          {/* Desktop table — scrolls horizontally inside the card when the
+          {/* Desktop table ??? scrolls horizontally inside the card when the
               viewport is narrow instead of clipping the download actions. */}
           <div className="hidden overflow-x-auto rounded-card border border-line bg-surface shadow-card md:block">
             <table className="w-full min-w-[52rem] text-left text-sm">
@@ -189,7 +189,7 @@ export function SaFilledFormsPage() {
                           onDownload={() => onDownload(request, "document")}
                         />
                       ) : (
-                        <span className="text-xs text-ink-400">—</span>
+                        <span className="text-xs text-ink-400">???</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -273,7 +273,7 @@ export function SaFilledFormsPage() {
   );
 }
 
-/** Filename + type + size with a download affordance (§5C SA6 details). */
+/** Filename + type + size with a download affordance (??5C SA6 details). */
 function FileCell({
   file,
   busy,
@@ -294,8 +294,8 @@ function FileCell({
         </span>
       </div>
       <p className="text-[11px] text-ink-400">
-        {fileKindLabel(file.content_type)} · {formatFileSize(file.size_bytes)}
-        {uploadedLabel ? ` · ${uploadedLabel}` : ""}
+        {fileKindLabel(file.content_type)} ?? {formatFileSize(file.size_bytes)}
+        {uploadedLabel ? ` ?? ${uploadedLabel}` : ""}
       </p>
       <Button variant="secondary" size="sm" onClick={onDownload} isLoading={busy}>
         {!busy && <Download aria-hidden className="h-3 w-3" />}

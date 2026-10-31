@@ -1,37 +1,31 @@
-# Dependencies
+# dependencies
 node_modules/
-/.pnp
-.pnp.js
 
-# Production build
+# build output
 dist/
-build/
+*.tsbuildinfo
 
-# Environment files
+# env files (the platform-provided .env is committed separately)
 .env
-.env.local
-.env.*.local
-.env.production
-.env.development
+.env.*
 !.env.example
 
-# Test & coverage artifacts
-coverage/
-test-results/
-
-# Editor and system files
-.DS_Store
-Thumbs.db
+# sandbox runtime plumbing (not part of the DocDesk source)
+.zscripts/
+Caddyfile
+dev.log
+dev.out.log
+server.log
 *.log
-.vscode/*
-!.vscode/extensions.json
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
-# Agent & runtime scratch
-.system_generated/
-scratch/
+# platform directories
+/upload/
+/download/
+/skills/
+/examples/
+
+# misc
+.DS_Store
+.local-*
+.claude/
+.z-ai-config/

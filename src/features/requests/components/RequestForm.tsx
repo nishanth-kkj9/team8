@@ -11,24 +11,25 @@ export interface RequestFormValues {
 }
 
 interface RequestFormProps {
-  /** Active document types offered in the dropdown (§5B R2). */
+  /** Active document types offered in the dropdown (??5B R2). */
   docTypes: DocType[];
   mode: "create" | "edit";
   initial?: Partial<RequestFormValues>;
   submitLabel: string;
   submitting?: boolean;
+  submitDisabled?: boolean;
   formError?: string | null;
   onSubmit: (values: RequestFormValues) => void | Promise<void>;
   onCancel?: () => void;
   /** Unique input id prefix so the create page and edit modal never collide. */
   idPrefix?: string;
-  /** Create mode shows the read-only requester details block (§5B R2). */
+  /** Create mode shows the read-only requester details block (??5B R2). */
   showRequesterDetails?: boolean;
 }
 
 /**
  * Shared request form for creating a request and editing a pending one
- * (§9.1: active document type required; reason 5–1,000 characters).
+ * (??9.1: active document type required; reason 5???1,000 characters).
  */
 export function RequestForm({
   docTypes,
@@ -36,6 +37,7 @@ export function RequestForm({
   initial,
   submitLabel,
   submitting = false,
+  submitDisabled = false,
   formError = null,
   onSubmit,
   onCancel,
@@ -53,7 +55,7 @@ export function RequestForm({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const next: { doc_type_id?: string; reason?: string } = {};
-    if (!docTypeId) {
+    if (!selectedType || selectedType.status !== "active") {
       next.doc_type_id = "Select the document type you need.";
     }
     const reasonError = validateReason(reason);
@@ -61,8 +63,8 @@ export function RequestForm({
       next.reason = reasonError;
     }
     setErrors(next);
-    if (Object.keys(next).length > 0) return;
-    await onSubmit({ doc_type_id: docTypeId, reason });
+    if (Object.keys(next).length > 0 || !selectedType || selectedType.status !== "active") return;
+    await onSubmit({ doc_type_id: selectedType.doc_type_id, reason: reason.trim() });
   };
 
   return (
@@ -117,11 +119,15 @@ export function RequestForm({
           id={`${idPrefix}-doc-type`}
           name="doc_type_id"
           value={docTypeId}
-          onChange={(event) => setDocTypeId(event.target.value)}
+          onChange={(event) => {
+            setDocTypeId(event.target.value);
+            if (errors.doc_type_id) setErrors((current) => ({ ...current, doc_type_id: undefined }));
+          }}
           invalid={!!errors.doc_type_id}
+          disabled={submitting}
         >
           <option value="" disabled>
-            Select a document type…
+          Select a document type
           </option>
           {docTypes.map((docType) => (
             <option key={docType.doc_type_id} value={docType.doc_type_id}>
@@ -132,12 +138,12 @@ export function RequestForm({
       </Field>
 
       <Field
-        label="Reason"
+        label="Reason for requesting this document"
         htmlFor={`${idPrefix}-reason`}
         required
         error={errors.reason}
         hint={`${reasonLength} / ${LIMITS.reasonMax} characters${
-          mode === "edit" ? " — only the document type and reason can change while a request is pending." : ""
+          mode === "edit" ? " Only the document type and reason can change while a request is pending." : ""
         }`}
       >
         <Textarea
@@ -145,11 +151,19 @@ export function RequestForm({
           name="reason"
           value={reason}
           maxLength={LIMITS.reasonMax}
-          onChange={(event) => setReason(event.target.value)}
+          onChange={(event) => {
+            setReason(event.target.value);
+            if (errors.reason) setErrors((current) => ({ ...current, reason: undefined }));
+          }}
           invalid={!!errors.reason}
-          placeholder="Explain why you need this document (5–1,000 characters)…"
+          placeholder="Explain why you need this document..."
           rows={5}
+          disabled={submitting}
+          aria-describedby={`${idPrefix}-reason-count`}
         />
+        <span id={`${idPrefix}-reason-count`} className="text-xs text-ink-500" aria-live="polite">
+          {reasonLength} / {LIMITS.reasonMax}
+        </span>
       </Field>
 
       <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
@@ -158,7 +172,7 @@ export function RequestForm({
             Cancel
           </Button>
         ) : null}
-        <Button type="submit" isLoading={submitting}>
+        <Button type="submit" isLoading={submitting} disabled={submitDisabled}>
           {submitLabel}
         </Button>
       </div>

@@ -9,7 +9,7 @@ import { Topbar } from "./Topbar";
 const COLLAPSE_KEY = "docdesk.demo.sidebar-collapsed.v1";
 
 /**
- * Shared role-aware app shell (ARCHITECTURE.md §4.1): collapsible left sidebar
+ * Shared role-aware app shell (ARCHITECTURE.md ??4.1): collapsible left sidebar
  * on desktop, drawer navigation on mobile, topbar with breadcrumb / help /
  * profile menu / demo indicator, and a sticky footer note.
  */
@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
         <footer className="border-t border-line px-4 py-4 sm:px-6 lg:px-8">
           <p className="text-xs text-ink-400">
-            DocDesk — Official CampusOS Academic Document Requests.
+            DocDesk demo build ??? mock data only, not connected to the CampusOS API.
           </p>
         </footer>
       </div>

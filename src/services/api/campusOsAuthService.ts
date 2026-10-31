@@ -92,9 +92,9 @@ function extractProfile(raw: Record<string, unknown> | undefined): {
   };
 }
 
-async function fetchProfileForRole(role: CampusRole) {
+async function fetchProfileForRole(role: CampusRole, token: string) {
   const endpoint = role === "admin" ? "/admin/me" : "/users/me";
-  const rawProfile = await campusOsClient.get<{ profile?: Record<string, unknown> }>(endpoint);
+  const rawProfile = await campusOsClient.getWithToken<{ profile?: Record<string, unknown> }>(endpoint, token);
   const profileData = rawProfile?.profile ?? rawProfile;
   return extractProfile(profileData as Record<string, unknown> | undefined);
 }
@@ -131,7 +131,7 @@ export async function login(email: string, otp: string): Promise<AuthResult> {
 
     const loginProfile = responseData.profile ? extractProfile(responseData.profile as Record<string, unknown>) : null;
     const roleToFetch = isAdminEmail ? "admin" : loginProfile?.role ?? "student";
-    const authoritativeProfile = await fetchProfileForRole(roleToFetch);
+    const authoritativeProfile = await fetchProfileForRole(roleToFetch, token);
     if (!authoritativeProfile) {
       clearStoredSession();
       return { profile: null, token: null, expiresAt: null, error: "Could not retrieve authenticated user profile from CampusOS." };
@@ -167,7 +167,7 @@ export async function login(email: string, otp: string): Promise<AuthResult> {
           return { profile: null, token: null, expiresAt: null, error: "No access_token returned by login endpoint." };
         }
         const expiresIn = responseData.expires_in && responseData.expires_in > 0 ? responseData.expires_in : 43200;
-        const authoritativeProfile = await fetchProfileForRole("admin");
+        const authoritativeProfile = await fetchProfileForRole("admin", token);
         if (!authoritativeProfile) {
           clearStoredSession();
           return { profile: null, token: null, expiresAt: null, error: "Could not retrieve authenticated user profile from CampusOS." };

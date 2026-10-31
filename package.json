@@ -3,12 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "DocDesk — CampusOS academic document requests",
+  "description": "DocDesk — CampusOS academic document requests (frontend-only demo build)",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx tests/docdesk.test.ts",
+    "test": "tsx scripts/phase4-service-checks.ts && tsx scripts/e2e-scenarios.ts && tsx scripts/request-screen-checks.ts",
+    "verify:service": "tsx scripts/phase4-service-checks.ts",
     "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
   "dependencies": {

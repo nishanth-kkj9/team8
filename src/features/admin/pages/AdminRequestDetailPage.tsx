@@ -33,9 +33,9 @@ import type { DocRequest } from "../../../types/request";
 type Busy = "document" | "filled-form" | null;
 
 /**
- * Screen A3 — Request Details, read-only (§5D). Admin can inspect the full
- * record — requester profile, TAT, answer, attached documents, acknowledgement
- * date — and download the answer document / filled-in form. Every mutation is
+ * Screen A3 ??? Request Details, read-only (??5D). Admin can inspect the full
+ * record ??? requester profile, TAT, answer, attached documents, acknowledgement
+ * date ??? and download the answer document / filled-in form. Every mutation is
  * intentionally absent: the Admin role is read-only in DocDesk and the API
  * returns 403 for any write.
  */
@@ -73,7 +73,7 @@ export function AdminRequestDetailPage() {
   }, [requestId]);
 
   if (loadState === "loading") {
-    return <Card className="p-8 text-center text-sm text-ink-500">Loading request…</Card>;
+    return <Card className="p-8 text-center text-sm text-ink-500">Loading request???</Card>;
   }
 
   if (loadState === "notfound" || !request) {
@@ -186,8 +186,8 @@ export function AdminRequestDetailPage() {
                     {request.requested_by_role ? (
                       <span className="text-ink-500">
                         {" "}
-                        · {ROLE_LABELS[request.requested_by_role]}
-                        {request.requested_by_dept ? ` · ${request.requested_by_dept}` : ""}
+                        ?? {ROLE_LABELS[request.requested_by_role]}
+                        {request.requested_by_dept ? ` ?? ${request.requested_by_dept}` : ""}
                       </span>
                     ) : null}
                   </dd>
@@ -263,7 +263,7 @@ export function AdminRequestDetailPage() {
             </Card>
           )}
 
-          {/* Filled-form metadata — read-only with download (§5D A3) */}
+          {/* Filled-form metadata ??? read-only with download (??5D A3) */}
           <Card>
             <CardHeader className="flex-row items-center gap-2">
               <span
@@ -350,7 +350,7 @@ export function AdminRequestDetailPage() {
               </h2>
               <p className="text-xs leading-5 text-ink-600">
                 Admin can inspect requests and download available files. Answers, TAT,
-                uploads and lifecycle changes belong to Student Affairs and requesters —
+                uploads and lifecycle changes belong to Student Affairs and requesters ???
                 the API rejects any Admin mutation with 403.
               </p>
               {request.document || request.filled_form ? (

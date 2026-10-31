@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { HelpCircle, LogOut, Menu, UserRound } from "lucide-react";
-import { useDemoAuth } from "../../context/DemoAuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { AREA_LABELS, type AppArea } from "../../lib/permissions";
 import { initials, roleLine } from "../../lib/display";
 import { Modal } from "../ui/Modal";
@@ -19,7 +19,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
-  const { profile, signOut } = useDemoAuth();
+  const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,7 +27,7 @@ export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
   const [helpOpen, setHelpOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // Close profile menu on outside click
+  // Close the profile menu on outside click.
   useEffect(() => {
     if (!menuOpen) return;
     const onPointerDown = (event: MouseEvent) => {
@@ -39,7 +39,7 @@ export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [menuOpen]);
 
-  // Close profile menu on route change
+  // Close the profile menu on route change.
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname, location.search]);
@@ -140,19 +140,18 @@ export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
       </div>
 
       <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="About DocDesk">
-        <ul className="list-disc space-y-1.5 pl-4 text-sm text-ink-700">
+        <ul className="list-disc space-y-2 pl-4 text-sm text-ink-700">
           <li>
-            DocDesk is the official CampusOS academic document request platform.
+            DocDesk is the CampusOS academic document request desk.
           </li>
           <li>
-            Signed in as <strong>{profile?.name}</strong> — {AREA_LABELS[area]}.
+            Signed in as <strong>{profile?.name}</strong> ({AREA_LABELS[area]}).
           </li>
           <li>
-            The official request statuses are <em>pending</em>, <em>answered</em>, and{" "}
-            <em>acknowledged</em>.
+            Request lifecycle: <em>pending</em> → <em>answered</em> → <em>acknowledged</em>.
           </li>
           <li>
-            Admin access is read-only across all institution requests.
+            Student Affairs reviews applications, sets turnaround dates, and provides answered documents.
           </li>
         </ul>
       </Modal>

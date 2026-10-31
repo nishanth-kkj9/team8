@@ -16,7 +16,7 @@ interface FieldProps {
   children: ReactNode;
 }
 
-/** Labelled form field with helper text and inline validation (§9.2). */
+/** Labelled form field with helper text and inline validation (??9.2). */
 export function Field({ label, htmlFor, hint, error, required, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-1.5">

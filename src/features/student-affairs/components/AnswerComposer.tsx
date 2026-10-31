@@ -8,7 +8,7 @@ import { formatFileSize } from "../../../lib/display";
 import type { DocRequest } from "../../../types/request";
 
 /**
- * Optional response templates (§5C SA3). Message presets only — they never
+ * Optional response templates (??5C SA3). Message presets only ??? they never
  * change the request's API status, which always becomes `answered`.
  */
 const RESPONSE_TEMPLATES: ReadonlyArray<{ label: string; text: string }> = [
@@ -18,7 +18,7 @@ const RESPONSE_TEMPLATES: ReadonlyArray<{ label: string; text: string }> = [
   },
   {
     label: "Cannot be issued",
-    text: "The requested document cannot be issued because …",
+    text: "The requested document cannot be issued because ???",
   },
   {
     label: "Fill and return",
@@ -26,7 +26,7 @@ const RESPONSE_TEMPLATES: ReadonlyArray<{ label: string; text: string }> = [
   },
   {
     label: "Ready for collection",
-    text: "Your document is ready for collection at the Student Affairs counter (Mon–Fri, 10 AM–4 PM).",
+    text: "Your document is ready for collection at the Student Affairs counter (Mon???Fri, 10 AM???4 PM).",
   },
 ];
 
@@ -46,9 +46,9 @@ interface AnswerComposerProps {
 }
 
 /**
- * Answer composer (§5C SA3): required message (1–2,000 characters with
- * counter), optional answer document (PDF/DOCX, max 10 MB) and — in edit
- * mode — replacement or removal of the previously attached document.
+ * Answer composer (??5C SA3): required message (1???2,000 characters with
+ * counter), optional answer document (PDF/DOCX, max 10 MB) and ??? in edit
+ * mode ??? replacement or removal of the previously attached document.
  */
 export function AnswerComposer({
   mode,
@@ -96,7 +96,7 @@ export function AnswerComposer({
       trimmed.length > LIMITS.answerMessageMax
     ) {
       setMessageError(
-        `Response message must be ${LIMITS.answerMessageMin}–${LIMITS.answerMessageMax} characters.`,
+        `Response message must be ${LIMITS.answerMessageMin}???${LIMITS.answerMessageMax} characters.`,
       );
       return;
     }
@@ -164,7 +164,7 @@ export function AnswerComposer({
           onChange={(event) => setMessage(event.target.value)}
           invalid={!!messageError}
           rows={6}
-          placeholder="Write the response the requester will see. An answer may approve, explain non-issuance, give form instructions or collection details…"
+          placeholder="Write the response the requester will see. An answer may approve, explain non-issuance, give form instructions or collection details???"
         />
       </Field>
 

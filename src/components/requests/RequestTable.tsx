@@ -6,7 +6,7 @@ import { formatDateTime, formatDateOnly } from "../../lib/date";
 import { ROLE_LABELS } from "../../types/auth";
 
 function preview(text: string, max = 72): string {
-  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
+  return text.length > max ? `${text.slice(0, max).trimEnd()}???` : text;
 }
 
 function ReasonPreview({ reason }: { reason: string }) {
@@ -21,19 +21,19 @@ interface RequestTableProps {
   requests: DocRequest[];
   /** Detail route prefix; requesters link into /app, Student Affairs into /sa. */
   detailPathPrefix?: string;
-  /** SA queue view: show requester name / email / role · dept columns (§5C SA2). */
+  /** SA queue view: show requester name / email / role ?? dept columns (??5C SA2). */
   showRequester?: boolean;
-  /** Bulk-TAT selection (§5C SA2): pending rows only. Omit on other views. */
+  /** Bulk-TAT selection (??5C SA2): pending rows only. Omit on other views. */
   selectable?: boolean;
   selectedIds?: ReadonlySet<string>;
   onToggleSelect?: (requestId: string) => void;
 }
 
 /**
- * Requests list (§5B R3 / §5C SA2): wide data table on desktop, compact cards
- * on mobile (§10.2). Rows link to the portal's request detail page. When
+ * Requests list (??5B R3 / ??5C SA2): wide data table on desktop, compact cards
+ * on mobile (??10.2). Rows link to the portal's request detail page. When
  * `selectable` is set, a leading checkbox column appears for the SA bulk-TAT
- * flow — only pending rows can be checked.
+ * flow ??? only pending rows can be checked.
  */
 export function RequestTable({
   requests,
@@ -110,7 +110,7 @@ export function RequestTable({
                         ? ROLE_LABELS[request.requested_by_role]
                         : ""}
                       {request.requested_by_dept
-                        ? ` · ${request.requested_by_dept}`
+                        ? ` ?? ${request.requested_by_dept}`
                         : ""}
                     </span>
                   </td>
@@ -130,7 +130,7 @@ export function RequestTable({
                   {formatDateTime(request.created_at)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-500">
-                  {request.tat ? formatDateOnly(request.tat.expected_by) : "—"}
+                  {request.tat ? formatDateOnly(request.tat.expected_by) : "???"}
                 </td>
                 <td className="px-4 py-3">
                   <RequestStatusBadge status={request.status} />
@@ -175,7 +175,7 @@ export function RequestTable({
               {showRequester ? (
                 <span className="mt-0.5 block truncate text-xs text-ink-500">
                   {request.requested_by_name}
-                  {request.requested_by_dept ? ` · ${request.requested_by_dept}` : ""}
+                  {request.requested_by_dept ? ` ?? ${request.requested_by_dept}` : ""}
                 </span>
               ) : null}
               <span className="mt-0.5 block truncate text-xs text-ink-500">

@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CheckCircle2, ChevronRight, Clock3, Inbox, MailCheck, Search, UserPlus } from "lucide-react";
-import { useDemoAuth } from "../../../context/DemoAuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
@@ -13,7 +13,7 @@ import { RequestStatusBadge } from "../../../components/ui/StatusBadge";
 import { formatDateTime } from "../../../lib/date";
 import type { DocDeskStatus } from "../../../types/request";
 
-/** Status chips colours (§10.1): amber pending, blue answered, green acknowledged. */
+/** Status chips colours (??10.1): amber pending, blue answered, green acknowledged. */
 const STATUS_BARS: ReadonlyArray<[DocDeskStatus, string, string]> = [
   ["pending", "Pending", "bg-amber-500"],
   ["answered", "Answered", "bg-blue-600"],
@@ -21,13 +21,13 @@ const STATUS_BARS: ReadonlyArray<[DocDeskStatus, string, string]> = [
 ];
 
 /**
- * Screen A1 — Admin Dashboard (§5D): read-only oversight across the
+ * Screen A1 ??? Admin Dashboard (??5D): read-only oversight across the
  * institution. Status counters, recent requests, distribution by document
  * type and a search control that hands off to the All Requests register.
  * No write controls exist anywhere in this portal.
  */
 export function AdminDashboardPage() {
-  const { profile } = useDemoAuth();
+  const { profile } = useAuth();
   const { requests, docTypes, loading } = useDocDeskData();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -66,19 +66,22 @@ export function AdminDashboardPage() {
 
       <Link
         to="/admin/users/new"
-        className="flex items-center justify-between gap-4 rounded-card border border-primary-200 bg-primary-50 p-4 text-primary-900 transition-colors hover:bg-primary-100"
+        className="flex items-center justify-between gap-4 rounded-card border border-primary-200 bg-primary-50 p-4 text-primary-900 shadow-sm transition-colors hover:bg-primary-100"
       >
         <span className="flex items-center gap-3">
-          <UserPlus aria-hidden className="h-5 w-5 shrink-0 text-primary-700" />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-primary-600 text-white">
+            <UserPlus className="h-5 w-5" />
+          </span>
           <span>
-            <span className="block text-sm font-semibold">Register a student</span>
-            <span className="block text-xs text-primary-700">Create an account so the student can sign in to DocDesk.</span>
+            <span className="block text-sm font-semibold">Register a student &amp; generate OTP</span>
+            <span className="block text-xs text-primary-700">Create an account for a student and obtain their sign-in OTP.</span>
           </span>
         </span>
-        <ChevronRight aria-hidden className="h-4 w-4 shrink-0" />
+        <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-primary-600" />
       </Link>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Requests" value={counts.total} icon={Inbox} />
         <StatCard label="Pending" value={counts.pending} icon={Clock3} tone="amber" />
         <StatCard label="Answered" value={counts.answered} icon={MailCheck} tone="blue" />
         <StatCard
@@ -90,7 +93,7 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
-        {/* Recent requests across the institution (§5D A1) */}
+        {/* Recent requests across the institution (??5D A1) */}
         <Card className="min-w-0 xl:col-span-3">
           <CardHeader className="flex-row items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-ink-900">Recent requests</h2>
@@ -104,7 +107,7 @@ export function AdminDashboardPage() {
           </CardHeader>
           <CardBody className="space-y-1">
             {loading && requests.length === 0 ? (
-              <p className="py-4 text-center text-sm text-ink-500">Loading requests…</p>
+              <p className="py-4 text-center text-sm text-ink-500">Loading…</p>
             ) : recent.length === 0 ? (
               <p className="py-4 text-center text-sm text-ink-500">
                 No requests have been submitted yet.
@@ -124,7 +127,7 @@ export function AdminDashboardPage() {
                         <span className="block truncate text-sm font-medium text-ink-800">
                           {request.doc_type_name}
                           <span className="ml-1.5 text-xs font-normal text-ink-500">
-                            · {request.requested_by_name ?? "Unknown"}
+                            ?? {request.requested_by_name ?? "Unknown"}
                           </span>
                         </span>
                         <span className="block text-[11px] text-ink-400">
@@ -142,7 +145,7 @@ export function AdminDashboardPage() {
         </Card>
 
         <div className="min-w-0 space-y-6 xl:col-span-2">
-          {/* Search / filter hand-off (§5D A1) */}
+          {/* Search / filter hand-off (??5D A1) */}
           <Card>
             <CardHeader>
               <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
@@ -156,7 +159,7 @@ export function AdminDashboardPage() {
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Requester, email, ID, document…"
+                  placeholder="Requester, email, ID, document???"
                   aria-label="Search all requests"
                 />
                 <Button type="submit" variant="secondary">
@@ -164,12 +167,12 @@ export function AdminDashboardPage() {
                 </Button>
               </form>
               <p className="mt-2 text-xs text-ink-400">
-                Searches the institution-wide register — results open in All Requests.
+                Searches the institution-wide register ??? results open in All Requests.
               </p>
             </CardBody>
           </Card>
 
-          {/* Distribution by document type (§5D A1) */}
+          {/* Distribution by document type (??5D A1) */}
           <Card>
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink-900">
@@ -207,14 +210,14 @@ export function AdminDashboardPage() {
               )}
               {docTypes.length > 0 ? (
                 <p className="pt-1 text-xs text-ink-400">
-                  Across {docTypes.length} document types — see Document Details for the
+                  Across {docTypes.length} document types ??? see Document Details for the
                   read-only catalog.
                 </p>
               ) : null}
             </CardBody>
           </Card>
 
-          {/* Distribution by status (§5D A1) */}
+          {/* Distribution by status (??5D A1) */}
           <Card>
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink-900">

@@ -14,11 +14,11 @@ interface RequestFiltersProps {
   onDocTypeIdChange: (value: string) => void;
   sort: RequestSort;
   onSortChange: (value: RequestSort) => void;
-  /** All document types (including archived — old requests may reference them). */
+  /** All document types (including archived ??? old requests may reference them). */
   docTypes: DocType[];
 }
 
-/** Search / filter / sort controls for My Requests (§5B R3). */
+/** Search / filter / sort controls for My Requests (??5B R3). */
 export function RequestFilters({
   search,
   onSearchChange,
@@ -43,7 +43,7 @@ export function RequestFilters({
           type="search"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search by request ID or document name…"
+          placeholder="Search by request ID or document name???"
           aria-label="Search requests by request ID or document name"
           className="pl-9"
         />

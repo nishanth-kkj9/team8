@@ -11,7 +11,7 @@ interface FileMetadataCardProps {
   downloading?: boolean;
 }
 
-/** Attachment card showing filename / type / size with a download action (§5B R5). */
+/** Attachment card showing filename / type / size with a download action (??5B R5). */
 export function FileMetadataCard({
   label,
   file,
@@ -32,7 +32,7 @@ export function FileMetadataCard({
           {file.filename}
         </span>
         <span className="block text-xs text-ink-500">
-          {label} · {fileKindLabel(file.content_type)} · {formatFileSize(file.size_bytes)}
+          {label} ?? {fileKindLabel(file.content_type)} ?? {formatFileSize(file.size_bytes)}
         </span>
       </span>
       {onDownload ? (

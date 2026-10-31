@@ -9,8 +9,8 @@ import {
   Files,
   Inbox,
   LayoutDashboard,
-  UserRound,
   UserPlus,
+  UserRound,
 } from "lucide-react";
 import type { AppArea } from "../../lib/permissions";
 
@@ -72,6 +72,12 @@ export const NAV_BY_AREA: Record<AppArea, { heading: string; items: NavItem[] }>
         isActive: (l) => l.pathname === "/sa/dashboard",
       },
       {
+        label: "Request a Document",
+        icon: FilePlus2,
+        to: "/sa/requests/new",
+        isActive: (l) => l.pathname === "/sa/requests/new",
+      },
+      {
         label: "All Requests",
         icon: Inbox,
         to: "/sa/requests",
@@ -125,6 +131,12 @@ export const NAV_BY_AREA: Record<AppArea, { heading: string; items: NavItem[] }>
         isActive: (l) => l.pathname === "/admin/dashboard",
       },
       {
+        label: "Register Student",
+        icon: UserPlus,
+        to: "/admin/users/new",
+        isActive: (l) => l.pathname.startsWith("/admin/users"),
+      },
+      {
         label: "All Requests",
         icon: Inbox,
         to: "/admin/requests",
@@ -135,12 +147,6 @@ export const NAV_BY_AREA: Record<AppArea, { heading: string; items: NavItem[] }>
         icon: Files,
         to: "/admin/document-types",
         isActive: (l) => l.pathname === "/admin/document-types",
-      },
-      {
-        label: "Register Student",
-        icon: UserPlus,
-        to: "/admin/users/new",
-        isActive: (l) => l.pathname === "/admin/users/new",
       },
     ],
   },
@@ -162,15 +168,16 @@ export function pageTitleFor(pathname: string, search: string): string {
     "/app/dashboard": "Dashboard",
     "/app/requests": "My Requests",
     "/app/requests/new": "Request a Document",
+    "/sa/requests/new": "Request a Document",
     "/app/profile": "My Profile",
     "/sa/dashboard": "Dashboard",
     "/sa/filled-forms": "Filled Forms to Review",
     "/sa/document-types": "Document Types",
     "/sa/turnaround-time": "Turnaround Time",
     "/admin/dashboard": "Dashboard",
+    "/admin/users/new": "Register Student",
     "/admin/requests": "All Requests",
     "/admin/document-types": "Document Details",
-    "/admin/users/new": "Register Student",
   };
   if (titles[pathname]) return titles[pathname];
   if (/^\/(app|sa|admin)\/requests\/[^/]+$/.test(pathname)) return "Request details";

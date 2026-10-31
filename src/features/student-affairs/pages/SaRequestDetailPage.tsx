@@ -38,7 +38,7 @@ import type { DocRequest } from "../../../types/request";
 type Busy = "send" | "edit" | "withdraw" | "document" | "filled-form" | null;
 
 /**
- * Screen SA3 — Request review & answer (§5C SA3): full request review area,
+ * Screen SA3 ??? Request review & answer (??5C SA3): full request review area,
  * answer composer for pending requests, edit/withdraw answer until
  * acknowledgement, and view-only state afterwards.
  */
@@ -78,7 +78,7 @@ export function SaRequestDetailPage() {
   }, [requestId]);
 
   if (loadState === "loading") {
-    return <Card className="p-8 text-center text-sm text-ink-500">Loading request…</Card>;
+    return <Card className="p-8 text-center text-sm text-ink-500">Loading request???</Card>;
   }
 
   if (loadState === "notfound" || !request) {
@@ -235,9 +235,9 @@ export function SaRequestDetailPage() {
                     {request.requested_by_role ? (
                       <span className="text-ink-500">
                         {" "}
-                        · {ROLE_LABELS[request.requested_by_role]}
+                        ?? {ROLE_LABELS[request.requested_by_role]}
                         {request.requested_by_dept
-                          ? ` · ${request.requested_by_dept}`
+                          ? ` ?? ${request.requested_by_dept}`
                           : ""}
                       </span>
                     ) : null}
@@ -295,7 +295,7 @@ export function SaRequestDetailPage() {
                   Send answer
                 </h2>
                 <p className="text-xs text-ink-500">
-                  The response is free text — it may communicate approval, non-issuance,
+                  The response is free text ??? it may communicate approval, non-issuance,
                   form instructions or collection details. The request status becomes{" "}
                   <em>answered</em>.
                 </p>
@@ -421,7 +421,7 @@ export function SaRequestDetailPage() {
                 </p>
               ) : (
                 <p className="text-xs leading-5 text-ink-500">
-                  The requester acknowledged this answer. The request is closed — view and
+                  The requester acknowledged this answer. The request is closed ??? view and
                   download only.
                 </p>
               )}
@@ -430,7 +430,7 @@ export function SaRequestDetailPage() {
         </div>
       </div>
 
-      {/* Withdraw answer confirmation (§9.2) */}
+      {/* Withdraw answer confirmation (??9.2) */}
       <Modal
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}

@@ -9,7 +9,7 @@ import {
   MailCheck,
   UserRound,
 } from "lucide-react";
-import { useDemoAuth } from "../../../context/DemoAuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
@@ -48,11 +48,11 @@ const QUICK_LINKS = [
 ] as const;
 
 /**
- * Screen R1 — Requester dashboard (§5B R1): live status counters from the mock
+ * Screen R1 ??? Requester dashboard (??5B R1): live status counters from the mock
  * service, primary CTA, recent requests, quick links, and TAT display.
  */
 export function RequesterDashboardPage() {
-  const { profile } = useDemoAuth();
+  const { profile } = useAuth();
   const { requests, loading } = useDocDeskData();
 
   const firstName = profile?.name.split(/\s+/)[0] ?? "there";
@@ -76,7 +76,8 @@ export function RequesterDashboardPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total Requests" value={counts.total} icon={Inbox} />
         <StatCard label="Pending" value={counts.pending} icon={Clock3} tone="amber" />
         <StatCard label="Answered" value={counts.answered} icon={MailCheck} tone="blue" />
         <StatCard
@@ -135,7 +136,7 @@ export function RequesterDashboardPage() {
           </Link>
         </div>
         {loading && requests.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-ink-500">Loading demo data…</Card>
+          <Card className="p-8 text-center text-sm text-ink-500">Loading…</Card>
         ) : recent.length === 0 ? (
           <EmptyState
             icon={Inbox}

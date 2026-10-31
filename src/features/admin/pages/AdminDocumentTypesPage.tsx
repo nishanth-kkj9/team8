@@ -11,9 +11,9 @@ import type { DocumentTypeStatus } from "../../../types/document";
 type Filter = "all" | DocumentTypeStatus;
 
 /**
- * Admin "Document Details" (§4.4 item 3) — the document type catalog in
+ * Admin "Document Details" (??4.4 item 3) ??? the document type catalog in
  * read-only. Admin can browse active and archived types; create / edit /
- * archive / restore / delete stay with Student Affairs (§5C SA4) and the API
+ * archive / restore / delete stay with Student Affairs (??5C SA4) and the API
  * rejects any Admin mutation with 403.
  */
 export function AdminDocumentTypesPage() {
@@ -38,7 +38,7 @@ export function AdminDocumentTypesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Document Details"
-        description="The catalog of documents requesters can ask for — read-only for Admin. Curation (add, edit, archive, restore, delete) belongs to Student Affairs."
+        description="The catalog of documents requesters can ask for ??? read-only for Admin. Curation (add, edit, archive, restore, delete) belongs to Student Affairs."
         crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: "Document Details" }]}
       />
 
@@ -76,7 +76,7 @@ export function AdminDocumentTypesPage() {
 
       {loading && docTypes.length === 0 ? (
         <div className="rounded-card border border-line bg-surface p-8 text-center text-sm text-ink-500 shadow-card">
-          Loading document types…
+          Loading document types???
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -84,7 +84,7 @@ export function AdminDocumentTypesPage() {
           title={filter === "archived" ? "No archived types" : "No document types"}
           description={
             filter === "archived"
-              ? "Nothing is archived right now — every type is requestable."
+              ? "Nothing is archived right now ??? every type is requestable."
               : "Document types created by Student Affairs will appear here."
           }
         />
@@ -111,13 +111,13 @@ export function AdminDocumentTypesPage() {
                     ) : null}
                   </td>
                   <td className="max-w-[26rem] px-4 py-3 text-xs text-ink-600">
-                    {docType.description ?? <span className="text-ink-400">—</span>}
+                    {docType.description ?? <span className="text-ink-400">???</span>}
                   </td>
                   <td className="px-4 py-3">
                     <DocTypeStatusBadge status={docType.status} />
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-500">
-                    {docType.created_at ? formatDateOnly(docType.created_at) : "—"}
+                    {docType.created_at ? formatDateOnly(docType.created_at) : "???"}
                   </td>
                 </tr>
               ))}
@@ -128,7 +128,7 @@ export function AdminDocumentTypesPage() {
 
       <p className="flex items-center gap-1.5 text-xs text-ink-400">
         <ShieldCheck aria-hidden className="h-3.5 w-3.5 shrink-0" />
-        Read-only view — no document type actions are available to Admin.
+        Read-only view ??? no document type actions are available to Admin.
         {filter === "all" && docTypes.length === 0 && !loading ? (
           <SearchX aria-hidden className="ml-1 h-3.5 w-3.5 shrink-0" />
         ) : null}

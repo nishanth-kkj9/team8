@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { FilePlus2, FileText, Loader2, SearchX } from "lucide-react";
+import { FilePlus2, FileText, SearchX } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
@@ -10,35 +10,26 @@ import {
   RequestFilters,
   type RequestSort,
 } from "../../requests/components/RequestFilters";
-import { usePaginatedRequests } from "../../../hooks/usePaginatedRequests";
 import type { DocDeskStatus, DocRequest } from "../../../types/request";
 
 const NEWEST_FIRST = (a: DocRequest, b: DocRequest) =>
   a.created_at < b.created_at ? 1 : -1;
 
+/** Rows shown before the "Load more" control appears (Phase 6 pagination). */
+const PAGE_SIZE = 8;
+
 /**
- * Screen R3 — My Requests (§5B R3): requester's own requests with server-side
- * cursor pagination, document-type & status filters, text search across loaded records,
- * and newest/oldest/expected-date sorting.
+ * Screen R3 ??? My Requests (??5B R3): own requests only (scoped by the service),
+ * with search by request ID / document name, status + document type filters,
+ * newest/oldest/expected-date sorting, and empty states with a CTA.
  */
 export function MyRequestsPage() {
-  const { docTypes } = useDocDeskData();
+  const { requests, docTypes, loading } = useDocDeskData();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<DocDeskStatus | "">("");
   const [docTypeId, setDocTypeId] = useState("");
   const [sort, setSort] = useState<RequestSort>("newest");
-
-  const {
-    items: requests,
-    totalCount,
-    hasMore,
-    loading,
-    loadingMore,
-    loadMore,
-  } = usePaginatedRequests({
-    status,
-    doc_type_id: docTypeId,
-  });
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -50,9 +41,10 @@ export function MyRequestsPage() {
       ) {
         return false;
       }
+      if (status && request.status !== status) return false;
+      if (docTypeId && request.doc_type_id !== docTypeId) return false;
       return true;
     });
-
     switch (sort) {
       case "oldest":
         return list.sort((a, b) => -NEWEST_FIRST(a, b));
@@ -68,9 +60,20 @@ export function MyRequestsPage() {
       default:
         return list.sort(NEWEST_FIRST);
     }
-  }, [requests, search, sort]);
+  }, [requests, search, status, docTypeId, sort]);
 
   const filtersActive = search.trim() !== "" || status !== "" || docTypeId !== "";
+
+  // Pagination (Phase 6): collapse long lists behind a Load more control and
+  // reset the window whenever the search/filter/sort inputs change.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, status, docTypeId, sort]);
+  const visibleRequests = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  );
+  const remainingCount = filtered.length - visibleRequests.length;
 
   const clearFilters = () => {
     setSearch("");
@@ -83,7 +86,7 @@ export function MyRequestsPage() {
     <div className="space-y-6">
       <PageHeader
         title="My Requests"
-        description="All document requests you have submitted, with their live status in the pending → answered → acknowledged lifecycle."
+        description="All document requests you have submitted, with their live status in the pending ??? answered ??? acknowledged lifecycle."
         crumbs={[{ label: "Requester portal", to: "/app/dashboard" }, { label: "My Requests" }]}
         actions={
           <Link
@@ -111,10 +114,7 @@ export function MyRequestsPage() {
       </Card>
 
       {loading && requests.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-ink-500">
-          <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-primary-600" />
-          Loading your requests from CampusOS…
-        </Card>
+        <Card className="p-8 text-center text-sm text-ink-500">Loading your requests???</Card>
       ) : requests.length === 0 ? (
         <EmptyState
           icon={FileText}
@@ -134,7 +134,7 @@ export function MyRequestsPage() {
         <EmptyState
           icon={SearchX}
           title="No matching requests"
-          description="No requests match the current search query."
+          description="No requests match the current search and filters."
           action={
             filtersActive ? (
               <button
@@ -150,24 +150,19 @@ export function MyRequestsPage() {
       ) : (
         <>
           <p className="text-xs text-ink-500" aria-live="polite">
-            Showing {filtered.length} loaded records · {totalCount} total in CampusOS
+            Showing {visibleRequests.length} of {filtered.length} matching ??{" "}
+            {requests.length} total
           </p>
-          <RequestTable requests={filtered} />
-          {hasMore && (
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => void loadMore()}
-                disabled={loadingMore}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-line bg-surface px-6 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50 disabled:opacity-60"
-              >
-                {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-                Load more requests
-              </button>
-            </div>
-          )}
-          {!hasMore && requests.length > 0 && (
-            <p className="text-center text-xs text-ink-400">All requests loaded.</p>
+          <RequestTable requests={visibleRequests} />
+          {remainingCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50 sm:w-auto"
+            >
+              Load more requests
+              <span className="text-xs text-ink-500">({remainingCount} remaining)</span>
+            </button>
           )}
         </>
       )}

@@ -1,16 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Inbox, Loader2, SearchX, ShieldCheck } from "lucide-react";
+import { Eye, Inbox, SearchX, ShieldCheck } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { RequestTable } from "../../../components/requests/RequestTable";
 import { Input, Select } from "../../../components/ui/Field";
 import { STATUS_LABELS, type DocDeskStatus } from "../../../types/request";
 import type { RequestSort } from "../../requests/components/RequestFilters";
-import { usePaginatedRequests } from "../../../hooks/usePaginatedRequests";
 import { cn } from "../../../lib/cn";
 
 const NEWEST_FIRST = (a: { created_at: string }, b: { created_at: string }) =>
@@ -24,16 +22,22 @@ const TABS: ReadonlyArray<{ value: DocDeskStatus | ""; label: string }> = [
 ];
 
 /**
- * Screen A2 — All Requests (§5D, read-only). The institution-wide request
- * register: Admin can browse, search and filter everything with server-side
- * pagination, and open the read-only detail view.
+ * Screen A2 ??? All Requests (??5D, read-only). The institution-wide request
+ * register: Admin can browse, search and filter everything, and open the
+ * read-only detail view. There are deliberately no row actions, no selection
+ * checkboxes and no create button ??? the Admin role cannot mutate DocDesk
+ * records (??5D, ??3.3).
  */
+/** Rows shown before the "Load more" control appears (Phase 6 pagination). */
+const PAGE_SIZE = 8;
+
 export function AdminAllRequestsPage() {
-  const { docTypes } = useDocDeskData();
+  const { requests, docTypes, loading } = useDocDeskData();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [docTypeId, setDocTypeId] = useState("");
   const [sort, setSort] = useState<RequestSort>("newest");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const statusParam = searchParams.get("status");
   const status: DocDeskStatus | "" =
@@ -41,21 +45,11 @@ export function AdminAllRequestsPage() {
       ? statusParam
       : "";
 
-  const {
-    items: requests,
-    totalCount,
-    hasMore,
-    loading,
-    loadingMore,
-    loadMore,
-  } = usePaginatedRequests({
-    status,
-    doc_type_id: docTypeId,
-  });
-
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const list = requests.filter((request) => {
+      if (status && request.status !== status) return false;
+      if (docTypeId && request.doc_type_id !== docTypeId) return false;
       if (
         query &&
         !request.request_id.toLowerCase().includes(query) &&
@@ -81,15 +75,20 @@ export function AdminAllRequestsPage() {
       default:
         return list.sort(NEWEST_FIRST);
     }
-  }, [requests, search, sort]);
+  }, [requests, status, docTypeId, search, sort]);
 
   const filtersActive = search.trim() !== "" || docTypeId !== "";
 
-  const clearFilters = () => {
-    setSearch("");
-    setDocTypeId("");
-    setSort("newest");
-  };
+  // Pagination (Phase 6): collapse long lists behind a Load more control and
+  // reset the window whenever the search/filter/sort inputs change.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, docTypeId, sort, status]);
+  const visibleRequests = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  );
+  const remainingCount = filtered.length - visibleRequests.length;
 
   const heading = status === "" ? "All Requests" : `${STATUS_LABELS[status]} Requests`;
 
@@ -99,154 +98,148 @@ export function AdminAllRequestsPage() {
         title={heading}
         description={
           status === "pending"
-            ? "Pending document requests awaiting Student Affairs processing."
+            ? "Every pending request across the institution, waiting for Student Affairs."
             : status === "answered"
-              ? "Requests answered by Student Affairs, awaiting requester acknowledgement or form return."
+              ? "Answered requests across the institution, waiting for acknowledgement or a filled-in form."
               : status === "acknowledged"
-                ? "Completed and acknowledged document requests across the institution."
-                : "Institution-wide document request register. Read-only oversight across all statuses."
+                ? "Closed requests across the institution, kept for oversight and download."
+                : "Every document request across the institution, from every requester role. Read-only oversight."
         }
-        crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: "All Requests" }]}
-        actions={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-ink-600">
-            <ShieldCheck aria-hidden className="h-3.5 w-3.5 text-primary-700" />
-            Read-only oversight
-          </span>
-        }
+        crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: heading }]}
       />
 
-      {/* Status tabs */}
-      <div className="border-b border-line">
-        <nav aria-label="Status queue tabs" className="-mb-px flex gap-2">
-          {TABS.map((tab) => {
-            const active = status === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => {
-                  if (tab.value) {
-                    setSearchParams({ status: tab.value });
-                  } else {
-                    setSearchParams({});
-                  }
-                }}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "border-accent-600 text-primary-800"
-                    : "border-transparent text-ink-500 hover:border-line hover:text-ink-800",
-                )}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+      {/* Status tabs (kept in sync with the sidebar nav entries) */}
+      <div role="tablist" aria-label="Filter requests by status" className="flex flex-wrap gap-1.5">
+        {TABS.map((tab) => {
+          const active = tab.value === status;
+          return (
+            <button
+              key={tab.label}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                // Keep ?q= (and any other params) when switching status tabs.
+                const params = new URLSearchParams(searchParams);
+                if (tab.value) {
+                  params.set("status", tab.value);
+                } else {
+                  params.delete("status");
+                }
+                setSearchParams(params);
+              }}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                active
+                  ? "border-primary-700 bg-primary-700 text-white shadow-sm"
+                  : "border-line bg-surface text-ink-600 hover:border-primary-300 hover:text-primary-800",
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Filter and search bar */}
+      {/* Search / filter controls (??5D A2) */}
       <Card className="p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="sm:col-span-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[220px] flex-1">
             <Input
-              id="admin-queue-search"
-              placeholder="Search by ID, document, requester name, email, or reason…"
+              type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search requester name, email, request ID, document or reason???"
+              aria-label="Search requests by requester, email, request ID, document or reason"
             />
           </div>
           <Select
-            id="admin-queue-doc-type"
             value={docTypeId}
-            onChange={(e) => setDocTypeId(e.target.value)}
+            onChange={(event) => setDocTypeId(event.target.value)}
+            aria-label="Filter by document type"
+            className="w-48"
           >
             <option value="">All document types</option>
-            {docTypes.map((dt) => (
-              <option key={dt.doc_type_id} value={dt.doc_type_id}>
-                {dt.name}
-              </option>
-            ))}
+            {[...docTypes]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((docType) => (
+                <option key={docType.doc_type_id} value={docType.doc_type_id}>
+                  {docType.name}
+                </option>
+              ))}
           </Select>
           <Select
-            id="admin-queue-sort"
             value={sort}
-            onChange={(e) => setSort(e.target.value as RequestSort)}
+            onChange={(event) => setSort(event.target.value as RequestSort)}
+            aria-label="Sort requests"
+            className="w-44"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
-            <option value="expected">Turnaround target</option>
+            <option value="expected">By expected date</option>
           </Select>
         </div>
-        {filtersActive && (
-          <div className="mt-3 flex items-center justify-between border-t border-line pt-2 text-xs text-ink-500">
-            <span>Filtering loaded records</span>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="font-medium text-primary-700 hover:underline"
-            >
-              Reset filters
-            </button>
-          </div>
-        )}
       </Card>
 
-      {/* Table & states */}
       {loading && requests.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-ink-500">
-          <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-primary-600" />
-          Loading request register from CampusOS…
-        </Card>
+        <Card className="p-8 text-center text-sm text-ink-500">Loading requests???</Card>
       ) : requests.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title={status ? `No ${STATUS_LABELS[status].toLowerCase()} requests` : "Register is clear"}
-          description={
-            status
-              ? `There are currently no requests with status "${STATUS_LABELS[status]}".`
-              : "No document requests found across the institution."
-          }
+          title="No requests yet"
+          description="Requests submitted by students, faculty and office staff will appear here for oversight."
         />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={SearchX}
           title="No matching requests"
-          description="Try relaxing your search terms or clearing the document type filter."
+          description="No requests match the current filters."
           action={
-            <Button variant="ghost" onClick={clearFilters}>
-              Clear filters
-            </Button>
+            filtersActive ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setDocTypeId("");
+                }}
+                className="inline-flex h-10 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
+              >
+                Clear filters
+              </button>
+            ) : undefined
           }
         />
       ) : (
         <>
           <p className="text-xs text-ink-500" aria-live="polite">
-            Showing {filtered.length} loaded records · {totalCount} total in CampusOS
+            Showing {visibleRequests.length} of {filtered.length} matching ??{" "}
+            {requests.length} total
           </p>
           <RequestTable
-            requests={filtered}
+            requests={visibleRequests}
             detailPathPrefix="/admin/requests"
             showRequester
           />
-          {hasMore && (
-            <div className="pt-2 text-center">
-              <Button
-                variant="ghost"
-                onClick={() => void loadMore()}
-                disabled={loadingMore}
-              >
-                {loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Load more requests
-              </Button>
-            </div>
-          )}
-          {!hasMore && requests.length > 0 && (
-            <p className="text-center text-xs text-ink-400">All requests in this register view have been loaded.</p>
+          {remainingCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
+            >
+              Load more requests
+              <span className="text-xs text-ink-500">({remainingCount} remaining)</span>
+            </button>
           )}
         </>
       )}
+
+      {/* Read-only reminder (??5D: no write action anywhere in the Admin UI) */}
+      <p className="flex items-center gap-1.5 text-xs text-ink-400">
+        <ShieldCheck aria-hidden className="h-3.5 w-3.5 shrink-0" />
+        Admin view is read-only ??? open a request to inspect its details and download
+        available files.
+        <Eye aria-hidden className="ml-1 h-3.5 w-3.5 shrink-0" />
+      </p>
     </div>
   );
 }

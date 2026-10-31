@@ -4,8 +4,8 @@ import { formatDateTime, formatDateOnly } from "../../../lib/date";
 import { cn } from "../../../lib/cn";
 
 /**
- * Status timeline for the request detail page (§5B R4):
- * Pending → Answered → Acknowledged, with TAT expectation on the pending leg.
+ * Status timeline for the request detail page (??5B R4):
+ * Pending ??? Answered ??? Acknowledged, with TAT expectation on the pending leg.
  * `audience` picks the voice: requesters read "your acknowledgement", while
  * Student Affairs / Admin read the neutral "requester acknowledgement".
  */
@@ -44,7 +44,7 @@ export function RequestTimeline({
     {
       key: "acknowledged",
       label: request.acknowledged_at
-        ? "Acknowledged — request closed"
+        ? "Acknowledged ??? request closed"
         : request.status === "answered"
           ? audience === "requester"
             ? "Waiting for your acknowledgement"

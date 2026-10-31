@@ -11,6 +11,19 @@ export interface PaginatedResponse<T> {
   next_cursor: string | null;
 }
 
+/** API-shaped error retained by the isolated legacy mock used in service tests. */
+export class DocDeskServiceError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+    public details?: unknown,
+  ) {
+    super(message);
+    this.name = "DocDeskServiceError";
+  }
+}
+
 export interface RequestFilters {
   status?: DocDeskStatus;
   doc_type_id?: string;

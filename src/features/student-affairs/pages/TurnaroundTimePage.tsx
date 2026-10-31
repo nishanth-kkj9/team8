@@ -4,7 +4,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { useToast } from "../../../context/ToastContext";
 import { docDeskService } from "../../../services/serviceProvider";
-import { ApiError } from "../../../services/api/apiErrors";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
@@ -18,15 +17,15 @@ import { cn } from "../../../lib/cn";
 const DEFAULT_DATE = () => dateOnlyFromToday(7);
 
 /**
- * Screen SA5 — Turnaround Time management (§5C SA5, starred bonus).
+ * Screen SA5 ??? Turnaround Time management (??5C SA5, starred bonus).
  *
  * Single panel: pick a pending request, set `expected_by` (YYYY-MM-DD, not
- * before today) and an optional note. Bulk panel: select 1–100 distinct
+ * before today) and an optional note. Bulk panel: select 1???100 distinct
  * pending requests and apply one date/note to all of them through the
- * all-or-nothing bulk mock operation — if any selection is invalid, nothing
+ * all-or-nothing bulk mock operation ??? if any selection is invalid, nothing
  * is updated.
  *
- * Deep links: `?request=DRQ-…` preselects the single panel (from SA3's
+ * Deep links: `?request=DRQ-???` preselects the single panel (from SA3's
  * "Set TAT" button); `?selected=a,b,c` preselects the bulk panel (from SA2's
  * queue checkboxes).
  */
@@ -51,7 +50,7 @@ export function TurnaroundTimePage() {
   const singleRequestId = singleRequest?.request_id ?? "";
 
   // Keep fields in sync with the selected request (prefill an existing TAT).
-  // Keying on the resolved request id — not the raw singleId — also covers
+  // Keying on the resolved request id ??? not the raw singleId ??? also covers
   // deep links on a cold load, where `requests` arrives after first render.
   useEffect(() => {
     if (!singleRequestId || !singleRequest) return;
@@ -190,17 +189,12 @@ export function TurnaroundTimePage() {
         variant: "success",
       });
     } catch (error) {
+      // All-or-nothing: the mock service rejects the whole batch when any
+      // selection is invalid, so no record is partially updated (??5C SA5).
       setConfirmOpen(false);
-      let errorDesc = error instanceof Error ? error.message : "The bulk update failed.";
-      if (error instanceof ApiError) {
-        const failedIds = error.getFailedRequestIds();
-        if (failedIds.length > 0) {
-          errorDesc = `${error.message} (Failed request IDs: ${failedIds.join(", ")})`;
-        }
-      }
       toast({
-        title: "Bulk TAT rejected — nothing was updated",
-        description: errorDesc,
+        title: "Bulk TAT rejected ??? nothing was updated",
+        description: error instanceof Error ? error.message : "The bulk update failed.",
         variant: "error",
       });
     } finally {
@@ -264,10 +258,10 @@ export function TurnaroundTimePage() {
                   value={singleId}
                   onChange={(event) => setSingleId(event.target.value)}
                 >
-                  <option value="">Select a pending request…</option>
+                  <option value="">Select a pending request???</option>
                   {pending.map((request) => (
                     <option key={request.request_id} value={request.request_id}>
-                      {request.request_id} · {request.requested_by_name ?? "Unknown"} — {request.doc_type_name}
+                      {request.request_id} ?? {request.requested_by_name ?? "Unknown"} ??? {request.doc_type_name}
                     </option>
                   ))}
                 </Select>
@@ -276,17 +270,17 @@ export function TurnaroundTimePage() {
               {singleRequest ? (
                 <div className="rounded-control border border-line bg-slate-50/60 px-3 py-2.5 text-xs leading-5 text-ink-600">
                   <p className="font-medium text-ink-800">
-                    {singleRequest.request_id} · {singleRequest.doc_type_name}
+                    {singleRequest.request_id} ?? {singleRequest.doc_type_name}
                   </p>
                   <p className="mt-0.5">
                     {singleRequest.requested_by_name ?? "Unknown"}
-                    {singleRequest.requested_by_dept ? ` · ${singleRequest.requested_by_dept}` : ""} ·
+                    {singleRequest.requested_by_dept ? ` ?? ${singleRequest.requested_by_dept}` : ""} ??
                     submitted {formatDateTime(singleRequest.created_at)}
                   </p>
                   {singleRequest.tat ? (
                     <p className="mt-1 text-amber-700">
                       Current TAT: expected by {formatDateOnly(singleRequest.tat.expected_by)}
-                      {singleRequest.tat.note ? ` — “${singleRequest.tat.note}”` : ""} (saving replaces it)
+                      {singleRequest.tat.note ? ` ??? ???${singleRequest.tat.note}???` : ""} (saving replaces it)
                     </p>
                   ) : (
                     <p className="mt-1 text-ink-400">No TAT set yet.</p>
@@ -299,7 +293,7 @@ export function TurnaroundTimePage() {
                 htmlFor="tat-date"
                 required
                 error={singleError ?? undefined}
-                hint={singleError ? undefined : "YYYY-MM-DD · cannot be before today."}
+                hint={singleError ? undefined : "YYYY-MM-DD ?? cannot be before today."}
               >
                 <Input
                   id="tat-date"
@@ -314,7 +308,7 @@ export function TurnaroundTimePage() {
                 />
               </Field>
 
-              <Field label="Note" htmlFor="tat-note" hint="Optional — shown to the requester with the expected date.">
+              <Field label="Note" htmlFor="tat-note" hint="Optional ??? shown to the requester with the expected date.">
                 <Textarea
                   id="tat-note"
                   value={singleNote}
@@ -346,13 +340,13 @@ export function TurnaroundTimePage() {
             <div>
               <h2 className="text-sm font-semibold text-ink-900">Bulk TAT</h2>
               <p className="text-xs text-ink-500">
-                Select 1–{LIMITS.bulkTatMax} pending requests and apply one expected-by date to all.
+                Select 1???{LIMITS.bulkTatMax} pending requests and apply one expected-by date to all.
                 The update is all-or-nothing.
               </p>
             </div>
           </CardHeader>
           <CardBody className="space-y-4">
-            {/* Pending request table with checkboxes — overflow-x-auto keeps
+            {/* Pending request table with checkboxes ??? overflow-x-auto keeps
                 the page free of horizontal blowout on narrow desktops. */}
             <div className="overflow-x-auto rounded-control border border-line">
               <table className="w-full min-w-[32rem] text-left text-sm">
@@ -410,7 +404,7 @@ export function TurnaroundTimePage() {
                         {request.tat ? (
                           <span className="text-amber-700">{formatDateOnly(request.tat.expected_by)}</span>
                         ) : (
-                          <span className="text-ink-400">—</span>
+                          <span className="text-ink-400">???</span>
                         )}
                       </td>
                     </tr>
@@ -422,7 +416,7 @@ export function TurnaroundTimePage() {
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <p className="font-medium text-ink-700" aria-live="polite">
                 {selectedCount} of {pending.length} selected
-                <span className="ml-1 font-normal text-ink-400">(1–{LIMITS.bulkTatMax} allowed)</span>
+                <span className="ml-1 font-normal text-ink-400">(1???{LIMITS.bulkTatMax} allowed)</span>
               </p>
               {selectedCount > 0 ? (
                 <button
@@ -486,7 +480,7 @@ export function TurnaroundTimePage() {
         </Card>
       </div>
 
-      {/* Bulk confirmation summary (§5C SA5) */}
+      {/* Bulk confirmation summary (??5C SA5) */}
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
@@ -508,7 +502,7 @@ export function TurnaroundTimePage() {
             <strong>{formatDateOnly(bulkDate)}</strong>
             {bulkNote.trim() ? (
               <>
-                {" "}with the note “<span className="italic">{bulkNote.trim()}</span>”
+                {" "}with the note ???<span className="italic">{bulkNote.trim()}</span>???
               </>
             ) : null}
             .

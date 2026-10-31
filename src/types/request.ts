@@ -2,7 +2,7 @@ import type { RequesterRole } from "./auth";
 import type { StoredFileMetadata } from "./document";
 
 /**
- * The only valid DocDesk request statuses (ARCHITECTURE.md §0.5).
+ * The only valid DocDesk request statuses (ARCHITECTURE.md ??0.5).
  * Never introduce approved / rejected / under_processing / document_ready.
  */
 export type DocDeskStatus = "pending" | "answered" | "acknowledged";
@@ -34,7 +34,7 @@ export interface DocRequest {
   document?: StoredFileMetadata;
   filled_form?: StoredFileMetadata;
   acknowledged_at?: string;
-  /** The requester's email — used as the ownership key in demo filtering. */
+  /** The requester's email ??? used as the ownership key in demo filtering. */
   requested_by: string;
   requested_by_name?: string;
   requested_by_role?: RequesterRole;

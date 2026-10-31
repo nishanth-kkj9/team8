@@ -37,7 +37,7 @@ import type { DocRequest } from "../../../types/request";
 type Busy = "edit" | "withdraw" | "acknowledge" | "document" | "filled-form" | null;
 
 /**
- * Screens R4/R5 — Request detail & tracking (§5B R4, R5): lifecycle timeline,
+ * Screens R4/R5 ??? Request detail & tracking (??5B R4, R5): lifecycle timeline,
  * TAT panel, answer panel with optional documents, and status-dependent
  * requester actions (edit / withdraw while pending; acknowledge when answered).
  */
@@ -81,7 +81,7 @@ export function RequestDetailPage() {
   }, [requestId]);
 
   if (loadState === "loading") {
-    return <Card className="p-8 text-center text-sm text-ink-500">Loading request…</Card>;
+    return <Card className="p-8 text-center text-sm text-ink-500">Loading request???</Card>;
   }
 
   if (loadState === "notfound" || !request) {
@@ -166,7 +166,7 @@ export function RequestDetailPage() {
       setAcknowledgeOpen(false);
       toast({
         title: `Request ${updated.request_id} acknowledged`,
-        description: "Thanks for confirming — this request is now closed.",
+        description: "Thanks for confirming ??? this request is now closed.",
         variant: "success",
       });
     } catch (error) {
@@ -270,8 +270,8 @@ export function RequestDetailPage() {
                     {request.requested_by_role ? (
                       <span className="text-ink-500">
                         {" "}
-                        · {ROLE_LABELS[request.requested_by_role]}
-                        {request.requested_by_dept ? ` · ${request.requested_by_dept}` : ""}
+                        ?? {ROLE_LABELS[request.requested_by_role]}
+                        {request.requested_by_dept ? ` ?? ${request.requested_by_dept}` : ""}
                       </span>
                     ) : null}
                   </dd>
@@ -303,7 +303,7 @@ export function RequestDetailPage() {
             />
           ) : null}
 
-          {/* Screen R6 — filled-in form upload / replace / download / remove */}
+          {/* Screen R6 ??? filled-in form upload / replace / download / remove */}
           <FilledFormPanel
             request={request}
             onUpdated={setRequest}
@@ -444,7 +444,7 @@ export function RequestDetailPage() {
         />
       </Modal>
 
-      {/* Withdraw confirmation (§9.2) */}
+      {/* Withdraw confirmation (??9.2) */}
       <Modal
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
@@ -462,12 +462,12 @@ export function RequestDetailPage() {
       >
         <p>
           This permanently removes your pending request for{" "}
-          <strong>{request.doc_type_name}</strong> from DocDesk. This cannot be undone —
+          <strong>{request.doc_type_name}</strong> from DocDesk. This cannot be undone ???
           if you still need the document you will have to submit a new request.
         </p>
       </Modal>
 
-      {/* Acknowledge confirmation (§9.2) */}
+      {/* Acknowledge confirmation (??9.2) */}
       <Modal
         open={acknowledgeOpen}
         onClose={() => setAcknowledgeOpen(false)}
@@ -487,7 +487,7 @@ export function RequestDetailPage() {
           Confirm you have received Student Affairs' answer
           {request.document ? " and its attached document" : ""} for{" "}
           <strong>{request.doc_type_name}</strong>. The request will be marked{" "}
-          <strong>acknowledged</strong> and closed — no further changes are possible
+          <strong>acknowledged</strong> and closed ??? no further changes are possible
           afterwards.
         </p>
       </Modal>

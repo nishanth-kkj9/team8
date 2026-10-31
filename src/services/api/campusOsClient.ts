@@ -145,6 +145,13 @@ export const campusOsClient = {
     return requestJson<T>(finalPath, { method: "GET" });
   },
 
+  async getWithToken<T>(path: string, token: string): Promise<T> {
+    return requestJson<T>(path, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
   async post<T>(path: string, body?: unknown): Promise<T> {
     return requestJson<T>(path, {
       method: "POST",

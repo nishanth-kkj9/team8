@@ -1,12 +1,13 @@
 import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
-import { ShieldCheck } from "lucide-react";
+import { DemoChip } from "../../../components/ui/DemoChip";
+import { Info } from "lucide-react";
 import { ROLE_LABELS } from "../../../types/auth";
 
 /**
- * Read-only profile (§5B R7): users can read their profile but cannot edit it.
- * Fields render conditionally per role — only students have a USN, etc.
+ * Read-only profile (??5B R7): users can read their profile but cannot edit it.
+ * Fields render conditionally per role ??? only students have a USN, etc.
  */
 export function ProfilePage() {
   const { profile } = useDemoAuth();
@@ -36,8 +37,9 @@ export function ProfilePage() {
     <div className="space-y-6">
       <PageHeader
         title="My Profile"
-        description="Authoritative read-only profile details from CampusOS."
+        description="Read-only profile details. Profiles are managed by the Admin in CampusOS ??? users cannot edit their own."
         crumbs={[{ label: "Requester portal" }, { label: "My Profile" }]}
+        actions={<DemoChip />}
       />
       <Card className="max-w-2xl p-6">
         <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
@@ -53,8 +55,9 @@ export function ProfilePage() {
           ))}
         </dl>
         <p className="mt-6 flex items-start gap-2 border-t border-line pt-4 text-xs text-ink-500">
-          <ShieldCheck aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary-600" />
-          Authoritative profile retrieved from the official CampusOS identity service.
+          <Info aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          Showing the mock profile for this demo login. During API integration this data
+          will come from GET /api/v1/users/me (or /api/v1/admin/me for Admin).
         </p>
       </Card>
     </div>

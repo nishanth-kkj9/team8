@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { CalendarClock, Inbox, ListChecks, Loader2, SearchX, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { CalendarClock, Inbox, ListChecks, SearchX, X } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { useToast } from "../../../context/ToastContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -12,7 +12,6 @@ import { Input, Select } from "../../../components/ui/Field";
 import { LIMITS } from "../../../lib/validation";
 import { STATUS_LABELS, type DocDeskStatus } from "../../../types/request";
 import type { RequestSort } from "../../requests/components/RequestFilters";
-import { usePaginatedRequests } from "../../../hooks/usePaginatedRequests";
 import { cn } from "../../../lib/cn";
 
 const NEWEST_FIRST = (a: { created_at: string }, b: { created_at: string }) =>
@@ -26,11 +25,15 @@ const TABS: ReadonlyArray<{ value: DocDeskStatus | ""; label: string }> = [
 ];
 
 /**
- * Screen SA2 — Request queue (§5C SA2): institution-wide list with status
- * tabs, cursor pagination, text search, doc-type + sort filters, and bulk TAT selection.
+ * Screen SA2 ??? Request queue (??5C SA2): institution-wide list with status
+ * tabs (mirrored in the sidebar's All/Pending/Answered entries), search across
+ * requester name / email / request ID / document, and doc-type + sort filters.
  */
+/** Rows shown before the "Load more" control appears (Phase 6 pagination). */
+const PAGE_SIZE = 8;
+
 export function SaQueuePage() {
-  const { docTypes } = useDocDeskData();
+  const { requests, docTypes, loading } = useDocDeskData();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,24 +41,13 @@ export function SaQueuePage() {
   const [docTypeId, setDocTypeId] = useState("");
   const [sort, setSort] = useState<RequestSort>("newest");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const statusParam = searchParams.get("status");
   const status: DocDeskStatus | "" =
     statusParam === "pending" || statusParam === "answered" || statusParam === "acknowledged"
       ? statusParam
       : "";
-
-  const {
-    items: requests,
-    totalCount,
-    hasMore,
-    loading,
-    loadingMore,
-    loadMore,
-  } = usePaginatedRequests({
-    status,
-    doc_type_id: docTypeId,
-  });
 
   const setStatusTab = (value: DocDeskStatus | "") => {
     setSelectedIds(new Set()); // selection is only meaningful on the pending tab
@@ -91,6 +83,8 @@ export function SaQueuePage() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const list = requests.filter((request) => {
+      if (status && request.status !== status) return false;
+      if (docTypeId && request.doc_type_id !== docTypeId) return false;
       if (
         query &&
         !request.request_id.toLowerCase().includes(query) &&
@@ -115,157 +109,167 @@ export function SaQueuePage() {
       default:
         return list.sort(NEWEST_FIRST);
     }
-  }, [requests, search, sort]);
+  }, [requests, status, docTypeId, search, sort]);
 
   const filtersActive = search.trim() !== "" || docTypeId !== "";
 
-  const clearFilters = () => {
-    setSearch("");
-    setDocTypeId("");
-    setSort("newest");
-  };
+  // Pagination (Phase 6): collapse long lists behind a Load more control and
+  // reset the window whenever the search/filter/sort inputs change.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, docTypeId, sort, status]);
+  const visibleRequests = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  );
+  const remainingCount = filtered.length - visibleRequests.length;
+  const selectedShown = filtered.filter((r) => selectedIds.has(r.request_id)).length;
 
-  const selectedShown = filtered.filter((r) => r.status === "pending").length;
+  const heading =
+    status === "" ? "All Requests" : `${STATUS_LABELS[status]} Requests`;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Processing Queue"
-        description="Review incoming requests, answer with official documents, and set turnaround targets."
-        crumbs={[{ label: "Student Affairs", to: "/sa/dashboard" }, { label: "Queue" }]}
+        title={heading}
+        description={
+          status === "pending"
+            ? "Pending applications waiting for a Student Affairs response."
+            : status === "answered"
+              ? "Requests that have been answered and are waiting for acknowledgement or a filled-in form."
+              : status === "acknowledged"
+                ? "Closed requests the requester has acknowledged. View and download only."
+                : "Every document request across the institution, from every requester role."
+        }
+        crumbs={[{ label: "Student Affairs", to: "/sa/dashboard" }, { label: heading }]}
+        actions={
+          <Link
+            to="/sa/requests?status=pending"
+            className="inline-flex h-10 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
+          >
+            Open pending queue
+          </Link>
+        }
       />
 
-      {/* Status tabs */}
-      <div className="border-b border-line">
-        <nav aria-label="Status queue tabs" className="-mb-px flex gap-2">
-          {TABS.map((tab) => {
-            const active = status === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setStatusTab(tab.value)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "border-accent-600 text-primary-800"
-                    : "border-transparent text-ink-500 hover:border-line hover:text-ink-800",
-                )}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+      {/* Status tabs (kept in sync with the sidebar nav entries) */}
+      <div role="tablist" aria-label="Filter queue by status" className="flex flex-wrap gap-1.5">
+        {TABS.map((tab) => {
+          const active = tab.value === status;
+          return (
+            <button
+              key={tab.label}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setStatusTab(tab.value)}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                active
+                  ? "border-primary-700 bg-primary-700 text-white shadow-sm"
+                  : "border-line bg-surface text-ink-600 hover:border-primary-300 hover:text-primary-800",
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Filter and search bar */}
       <Card className="p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="sm:col-span-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[220px] flex-1">
             <Input
-              id="sa-queue-search"
-              placeholder="Search by ID, document, requester name or email…"
+              type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search requester name, email, request ID or document???"
+              aria-label="Search requests by requester, email, request ID or document"
             />
           </div>
           <Select
-            id="sa-queue-doc-type"
             value={docTypeId}
-            onChange={(e) => setDocTypeId(e.target.value)}
+            onChange={(event) => setDocTypeId(event.target.value)}
+            aria-label="Filter by document type"
+            className="w-48"
           >
             <option value="">All document types</option>
-            {docTypes.map((dt) => (
-              <option key={dt.doc_type_id} value={dt.doc_type_id}>
-                {dt.name}
-              </option>
-            ))}
+            {[...docTypes]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((docType) => (
+                <option key={docType.doc_type_id} value={docType.doc_type_id}>
+                  {docType.name}
+                </option>
+              ))}
           </Select>
           <Select
-            id="sa-queue-sort"
             value={sort}
-            onChange={(e) => setSort(e.target.value as RequestSort)}
+            onChange={(event) => setSort(event.target.value as RequestSort)}
+            aria-label="Sort requests"
+            className="w-44"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
-            <option value="expected">Turnaround target</option>
+            <option value="expected">By expected date</option>
           </Select>
         </div>
-        {filtersActive && (
-          <div className="mt-3 flex items-center justify-between border-t border-line pt-2 text-xs text-ink-500">
-            <span>Filtering loaded records</span>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="font-medium text-primary-700 hover:underline"
-            >
-              Reset filters
-            </button>
-          </div>
-        )}
       </Card>
 
-      {/* Table & states */}
       {loading && requests.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-ink-500">
-          <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-primary-600" />
-          Loading request queue from CampusOS…
-        </Card>
+        <Card className="p-8 text-center text-sm text-ink-500">Loading requests???</Card>
       ) : requests.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title={status ? `No ${STATUS_LABELS[status].toLowerCase()} requests` : "Queue is clear"}
-          description={
-            status
-              ? `There are currently no requests with status "${STATUS_LABELS[status]}".`
-              : "No document requests found in the system."
-          }
+          title="No requests yet"
+          description="Requests submitted by students, faculty and office staff will appear here."
         />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={SearchX}
           title="No matching requests"
-          description="Try relaxing your search terms or clearing the document type filter."
+          description="No requests match the current tab, search and filters."
           action={
-            <Button variant="ghost" onClick={clearFilters}>
-              Clear filters
-            </Button>
+            filtersActive ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setDocTypeId("");
+                }}
+                className="inline-flex h-10 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
+              >
+                Clear filters
+              </button>
+            ) : undefined
           }
         />
       ) : (
         <>
           <p className="text-xs text-ink-500" aria-live="polite">
-            Showing {filtered.length} loaded records · {totalCount} total in CampusOS
+            Showing {visibleRequests.length} of {filtered.length} matching ??{" "}
+            {requests.length} total
           </p>
           <RequestTable
-            requests={filtered}
+            requests={visibleRequests}
             detailPathPrefix="/sa/requests"
             showRequester
             selectable={status === "pending"}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
           />
-          {hasMore && (
-            <div className="pt-2 text-center">
-              <Button
-                variant="ghost"
-                onClick={() => void loadMore()}
-                disabled={loadingMore}
-              >
-                {loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Load more requests
-              </Button>
-            </div>
-          )}
-          {!hasMore && requests.length > 0 && (
-            <p className="text-center text-xs text-ink-400">All requests in this view have been loaded.</p>
+          {remainingCount > 0 && (
+            <Button
+              variant="ghost"
+              onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+            >
+              Load more requests
+              <span className="text-xs text-ink-500">({remainingCount} remaining)</span>
+            </Button>
           )}
         </>
       )}
 
-      {/* Bulk-TAT selection bar */}
+      {/* Bulk-TAT selection bar (??5C SA2: checkbox selection for bulk TAT, pending only) */}
       {status === "pending" && selectedIds.size > 0 ? (
         <div
           role="region"

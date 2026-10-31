@@ -1,21 +1,19 @@
 import { Loader2 } from "lucide-react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useDemoAuth } from "../context/DemoAuthContext";
 import { AppShell } from "../components/layout/AppShell";
-import { type AppArea, canAccessArea, canUseReturnPath } from "../lib/permissions";
+import { canAccessArea, type AppArea } from "../lib/permissions";
 import { AccessDeniedPage } from "./AccessDeniedPage";
+import { DocDeskDataProvider } from "../context/DocDeskDataContext";
 
-/** Protected route wrapper for demo roles (ARCHITECTURE.md §11 route plan).
- * - Not signed in → redirect to /login (remembering where the user wanted to go).
- * - Signed in without access to this area → Access Denied page.
- * - Signed in with access → render the role-aware AppShell around the outlet.
- * - Validates return paths to prevent cross-role access.
+/**
+ * Protected route wrapper for demo roles (ARCHITECTURE.md ??11 route plan).
+ * - Not signed in ??? redirect to /login (remembering where the user wanted to go).
+ * - Signed in without access to this area ??? Access Denied page.
+ * - Signed in with access ??? render the role-aware AppShell around the outlet.
  */
 export function ProtectedRoute({ area }: { area: AppArea }) {
-  const {
-    profile,
-    status,
-  } = useAuth();
+  const { profile, status } = useDemoAuth();
   const location = useLocation();
 
   if (status === "restoring") {
@@ -39,21 +37,15 @@ export function ProtectedRoute({ area }: { area: AppArea }) {
     );
   }
 
-  // Validate return path - prevent cross-role access
-  const from = (location.state as { from?: string } | null)?.from;
-  if (from && !canUseReturnPath(area, profile)) {
-    return <Navigate to={"/login"} replace state={{ from: location.pathname + location.search }} />;
-  }
-
   if (!canAccessArea(area, profile)) {
     return <AccessDeniedPage />;
   }
 
   return (
-    <div className="relative">
+    <DocDeskDataProvider>
       <AppShell>
         <Outlet />
       </AppShell>
-    </div>
+    </DocDeskDataProvider>
   );
 }
