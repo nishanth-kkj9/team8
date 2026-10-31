@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { createElement, type ComponentProps } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { campusOsDocDeskService } from "../src/services/api/campusOsDocDeskService";
 import { ApiError } from "../src/services/api/apiErrors";
 import { loadActiveDocTypes } from "../src/features/requester/utils/loadActiveDocTypes";
@@ -6,6 +8,7 @@ import { validateReason } from "../src/lib/validation";
 import { canCreateRequest } from "../src/lib/permissions";
 import type { DocType } from "../src/types/document";
 import type { DemoProfile } from "../src/types/auth";
+import { RequestForm } from "../src/features/requests/components/RequestForm";
 
 // Only the HTTP-mocked checks use this origin; production requires the organiser URL.
 process.env.VITE_API_BASE_URL ??= "https://campusos.test";
@@ -17,8 +20,10 @@ function check(name: string, fn: () => void): void {
   console.log(`PASS ${name}`);
 }
 
-const activeA: DocType = { doc_type_id: "DTY-A", name: "Bonafide Certificate", status: "active" };
+const activeA: DocType = { doc_type_id: "DTY-A", name: "Bonafide Certificate", description: "Proof of enrollment", status: "active" };
 const activeB: DocType = { doc_type_id: "DTY-B", name: "Transcript", status: "active" };
+const studyCertificate: DocType = { doc_type_id: "DTY-C", name: "Study Certificate", status: "active" };
+const marksCard: DocType = { doc_type_id: "DTY-D", name: "Marks Card", status: "active" };
 const archived: DocType = { doc_type_id: "DTY-X", name: "Old Type", status: "archived" };
 
 const calls: Array<{ status?: string; limit?: number; cursor?: string }> = [];
@@ -38,6 +43,76 @@ assert.deepEqual(calls, [
 ]);
 passed += 1;
 console.log("PASS active type filtering, duplicate prevention, pagination, and persistent active filter");
+
+function renderRequestForm(props: Partial<ComponentProps<typeof RequestForm>> = {}): string {
+  return renderToStaticMarkup(createElement(RequestForm, {
+    docTypes: [],
+    mode: "create",
+    submitLabel: "Submit Request",
+    documentTypeDisabled: true,
+    submitDisabled: true,
+    onSubmit: () => undefined,
+    idPrefix: "request-check",
+    ...props,
+  }));
+}
+const fieldsVisible = (markup: string) => {
+  assert.match(markup, /id="request-check-doc-type"/);
+  assert.match(markup, /id="request-check-reason"/);
+  assert.match(markup, /Submit Request/);
+};
+const submitButtonMarkup = (markup: string) => markup.match(/<button[^>]*>Submit Request<\/button>/)?.[0] ?? "";
+const reasonTextareaMarkup = (markup: string) => markup.match(/<textarea[^>]*>/)?.[0] ?? "";
+const emptyMarkup = renderRequestForm();
+fieldsVisible(emptyMarkup);
+assert.match(emptyMarkup, /No active document types are currently available\./);
+assert.match(emptyMarkup, /Please contact Student Affairs\./);
+assert.match(emptyMarkup, /name="reason"/);
+assert.match(emptyMarkup, /0 \/ 1000/);
+assert.match(emptyMarkup, /<select[^>]*\sdisabled=/);
+assert.match(emptyMarkup, /<option[^>]*disabled[^>]*>Bonafide<\/option>/);
+assert.match(emptyMarkup, /<option[^>]*disabled[^>]*>Study Certificate<\/option>/);
+assert.match(emptyMarkup, /<option[^>]*disabled[^>]*>Marks Card<\/option>/);
+assert.match(submitButtonMarkup(emptyMarkup), /\sdisabled=/);
+assert.doesNotMatch(reasonTextareaMarkup(emptyMarkup), /\sdisabled=/);
+passed += 1;
+console.log("PASS empty catalog keeps both request fields visible and disables type selection/submission");
+
+const loadingMarkup = renderRequestForm({ documentTypesLoading: true });
+fieldsVisible(loadingMarkup);
+assert.match(loadingMarkup, /Loading active document types/);
+assert.match(loadingMarkup, /<select[^>]*\sdisabled=/);
+assert.match(submitButtonMarkup(loadingMarkup), /\sdisabled=/);
+assert.doesNotMatch(reasonTextareaMarkup(loadingMarkup), /\sdisabled=/);
+passed += 1;
+console.log("PASS loading catalog keeps reason visible and disables unavailable submission");
+
+const errorMarkup = renderRequestForm({ documentTypesError: "Catalog unavailable", onRetryDocumentTypes: () => undefined });
+fieldsVisible(errorMarkup);
+assert.match(errorMarkup, /Catalog unavailable/);
+assert.match(errorMarkup, /Retry<\/button>/);
+assert.match(errorMarkup, /<select[^>]*\sdisabled=/);
+assert.match(submitButtonMarkup(errorMarkup), /\sdisabled=/);
+assert.doesNotMatch(reasonTextareaMarkup(errorMarkup), /\sdisabled=/);
+passed += 1;
+console.log("PASS catalog error keeps fields visible, offers retry, and disables submission");
+
+const activeMarkup = renderRequestForm({
+  docTypes: [activeA, activeB, studyCertificate, marksCard, archived],
+  initial: { doc_type_id: activeA.doc_type_id },
+  documentTypeDisabled: false,
+  submitDisabled: false,
+});
+fieldsVisible(activeMarkup);
+assert.match(activeMarkup, /value="DTY-A" selected="">Bonafide<\/option>/);
+assert.match(activeMarkup, /value="DTY-C"[^>]*>Study Certificate<\/option>/);
+assert.match(activeMarkup, /value="DTY-D"[^>]*>Marks Card<\/option>/);
+assert.match(activeMarkup, /Transcript/);
+assert.match(activeMarkup, /Proof of enrollment/);
+assert.doesNotMatch(activeMarkup, /Old Type/);
+assert.doesNotMatch(submitButtonMarkup(activeMarkup), /\sdisabled=/);
+passed += 1;
+console.log("PASS standard types map to API IDs, college types remain available, inactive types are excluded, and valid selection enables submit");
 
 let requestedUrl = "";
 let requestInit: RequestInit | undefined;
@@ -75,7 +150,7 @@ globalThis.fetch = async (_input, init) => {
 };
 const created = await campusOsDocDeskService.createRequest({
   doc_type_id: "DTY-A",
-  reason: "  For scholarship application  ".trim(),
+  reason: "  For scholarship application  ",
 });
 check("request creation posts exactly doc_type_id and trimmed reason", () => {
   assert.deepEqual(body, { doc_type_id: "DTY-A", reason: "For scholarship application" });

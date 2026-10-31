@@ -82,7 +82,7 @@ export class CampusOsDocDeskService implements DocDeskService {
   async createRequest(input: CreateRequestInput): Promise<DocRequest> {
     return campusOsClient.post<DocRequest>("/docdesk/requests", {
       doc_type_id: input.doc_type_id,
-      reason: input.reason,
+      reason: input.reason.trim(),
     });
   }
 

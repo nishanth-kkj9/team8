@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, FilePlus2, Inbox, Loader2, RefreshCw } from "lucide-react";
+import { FilePlus2 } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useToast } from "../../../context/ToastContext";
@@ -9,8 +9,6 @@ import { docDeskService } from "../../../services/serviceProvider";
 import type { DocType } from "../../../types/document";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
-import { EmptyState } from "../../../components/ui/EmptyState";
 import { RequestForm, type RequestFormValues } from "../../requests/components/RequestForm";
 import { loadActiveDocTypes } from "../utils/loadActiveDocTypes";
 
@@ -51,7 +49,7 @@ function describeSubmitError(error: unknown): string {
       ? `Too many requests. Please retry in ${error.retryAfterSeconds} seconds.`
       : error.message;
     default:
-      if (error.status >= 500) return `CampusOS is temporarily unavailable. Your form is saved here; please retry. (${error.message})`;
+      if (error.status >= 500) return `CampusOS is temporarily unavailable. Your entered values remain on this page; you can retry. (${error.message})`;
       return `${error.message}${details ? ` ${details}` : ""}`;
   }
 }
@@ -76,6 +74,7 @@ export function NewRequestPage() {
   const loadDocTypes = useCallback(async (signal: AbortSignal) => {
     setTypesLoading(true);
     setTypesError(null);
+    setDocTypes([]);
     try {
       if (!signal.aborted) {
         const loaded = await loadActiveDocTypes(docDeskService, () => signal.aborted);
@@ -125,6 +124,9 @@ export function NewRequestPage() {
       if (!created.request_id) {
         throw new Error("CampusOS confirmed the request but did not return a request ID.");
       }
+      if (created.status !== "pending") {
+        throw new Error(`CampusOS created ${created.request_id} with unexpected status ${created.status}.`);
+      }
 
       toast({
         title: `Request ${created.request_id} submitted`,
@@ -138,7 +140,6 @@ export function NewRequestPage() {
         setRetrySeconds(error.retryAfterSeconds);
       }
       if (error instanceof ApiError && error.status === 401) {
-        signOut();
         signOut();
         navigate("/login", { replace: true, state: { from: `${routeBase}/requests/new` } });
         return;
@@ -167,38 +168,22 @@ export function NewRequestPage() {
           <p className="text-xs text-ink-500">Requests are reviewed by the Student Affairs office.</p>
         </CardHeader>
         <CardBody>
-          {typesLoading ? (
-            <div role="status" className="flex items-center gap-2 py-6 text-sm text-ink-500">
-              <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
-              Loading active document types…
-            </div>
-          ) : typesError ? (
-            <div role="alert" className="space-y-3 rounded-control border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-              <p className="flex items-start gap-2"><AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />{typesError}</p>
-              <Button type="button" variant="secondary" onClick={() => setRetry((value) => value + 1)}>
-                <RefreshCw aria-hidden className="h-4 w-4" /> Retry
-              </Button>
-            </div>
-          ) : docTypes.length === 0 ? (
-            <EmptyState
-              icon={Inbox}
-              title="No active document types"
-              description="No active document types are currently available. Please contact Student Affairs."
-            />
-          ) : (
-            <RequestForm
-              docTypes={docTypes}
-              mode="create"
-              showRequesterDetails
-              submitLabel={retrySeconds > 0 ? `Retry in ${retrySeconds}s` : "Submit Request"}
-              submitting={submitting}
-              submitDisabled={retrySeconds > 0}
-              formError={formError}
-              onSubmit={onSubmit}
-              onCancel={() => navigate(`${routeBase}/requests`)}
-              idPrefix="new-request"
-            />
-          )}
+          <RequestForm
+            docTypes={docTypes}
+            mode="create"
+            showRequesterDetails
+            documentTypesLoading={typesLoading}
+            documentTypesError={typesError}
+            onRetryDocumentTypes={() => setRetry((value) => value + 1)}
+            documentTypeDisabled={typesLoading || !!typesError || !docTypes.some((type) => type.status === "active")}
+            submitLabel={retrySeconds > 0 ? `Retry in ${retrySeconds}s` : "Submit Request"}
+            submitting={submitting}
+            submitDisabled={retrySeconds > 0 || typesLoading || !!typesError || !docTypes.some((type) => type.status === "active")}
+            formError={formError}
+            onSubmit={onSubmit}
+            onCancel={() => navigate(`${routeBase}/requests`)}
+            idPrefix="new-request"
+          />
         </CardBody>
       </Card>
     </div>
