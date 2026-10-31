@@ -12,25 +12,11 @@ export function initials(name: string): string {
     .toUpperCase();
 }
 
-/** "Student ?? CSE", "Office Staff ?? Accounts", "Faculty ?? Associate Professor", "Admin". */
+/** Show only the two DocDesk account types: Student and Admin. */
 export function roleLine(profile: DemoProfile): string {
   const label = ROLE_LABELS[profile.role];
-  let suffix: string | undefined;
-  switch (profile.role) {
-    case "student":
-      suffix = profile.usn ?? profile.dept;
-      break;
-    case "faculty":
-      suffix = profile.designation;
-      break;
-    case "office_staff":
-      suffix = profile.dept ?? profile.designation;
-      break;
-    case "admin":
-      suffix = profile.institution_name;
-      break;
-  }
-  return suffix ? `${label} ?? ${suffix}` : label;
+  if (profile.role !== "student") return label;
+  return profile.usn ? `${label} · ${profile.usn}` : label;
 }
 
 const FILE_KINDS: Record<string, string> = {

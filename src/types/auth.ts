@@ -8,8 +8,8 @@ export type RequesterRole = Exclude<CampusRole, "admin">;
 
 export const ROLE_LABELS: Record<CampusRole, string> = {
   student: "Student",
-  faculty: "Faculty",
-  office_staff: "Office Staff",
+  faculty: "Admin",
+  office_staff: "Admin",
   admin: "Admin",
 };
 

@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
+import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useToast } from "../../../context/ToastContext";
 import { docDeskService } from "../../../services/serviceProvider";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -20,18 +21,21 @@ import { DocTypeStatusBadge } from "../../../components/ui/StatusBadge";
 import { LIMITS, validateDocTypeName } from "../../../lib/validation";
 import { formatDateOnly } from "../../../lib/date";
 import { cn } from "../../../lib/cn";
+import { isStudentAffairs } from "../../../lib/permissions";
 import type { DocType, DocumentTypeStatus } from "../../../types/document";
 
 type Filter = "all" | DocumentTypeStatus;
 type Busy = "create" | "update" | "status" | "delete" | null;
 
 /**
- * Screen SA4 ??? Document Type Manager (??5C SA4, starred bonus). Student Affairs
- * curates the requestable catalog: add, edit, archive, restore and delete.
+ * College Main Admin curates the requestable catalog: add, edit, archive,
+ * restore and delete.
  * Archived types disappear from requester dropdowns but existing requests keep
  * their stored document label.
  */
 export function DocumentTypesPage() {
+  const { profile } = useDemoAuth();
+  const canManage = isStudentAffairs(profile);
   const { docTypes, refresh } = useDocDeskData();
   const { toast } = useToast();
 
@@ -121,18 +125,25 @@ export function DocumentTypesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Document Types"
-        description="The catalog of documents requesters can ask for. Archived types are hidden from new requests until restored."
+        description={canManage
+          ? "Manage the catalog of documents students can request. Archived types are hidden from new requests until restored."
+          : "View the catalog of documents students can request. Active types appear in the student request form."}
         crumbs={[
-          { label: "Student Affairs", to: "/sa/dashboard" },
+          { label: "Admin", to: "/admin/dashboard" },
           { label: "Document Types" },
         ]}
-        actions={
+        actions={canManage ? (
           <Button onClick={openCreate} disabled={busy !== null}>
             <FilePlus2 aria-hidden className="h-4 w-4" />
             Add document type
           </Button>
-        }
+        ) : undefined}
       />
+      {!canManage ? <p className="rounded-control border border-line bg-slate-50 px-4 py-3 text-sm text-ink-600">
+        {profile?.role === "admin"
+          ? "Create an Admin staff account from Admin → Create Account to add and edit document types."
+          : "Sign in with an Admin staff account to add and edit document types."}
+      </p> : null}
 
       {/* Active / Archived filters (??5C SA4) */}
       <div role="tablist" aria-label="Filter document types by status" className="flex flex-wrap gap-1.5">
@@ -177,7 +188,7 @@ export function DocumentTypesPage() {
               : "Add the first document type so requesters can submit requests."
           }
           action={
-            filter === "all" ? (
+            filter === "all" && canManage ? (
               <Button variant="secondary" onClick={openCreate} disabled={busy !== null}>
                 <FilePlus2 aria-hidden className="h-4 w-4" />
                 Add document type
@@ -197,7 +208,7 @@ export function DocumentTypesPage() {
                   <th scope="col" className="px-4 py-3 font-medium">Description</th>
                   <th scope="col" className="px-4 py-3 font-medium">Status</th>
                   <th scope="col" className="px-4 py-3 font-medium">Created</th>
-                  <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th>
+                  {canManage ? <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -214,9 +225,9 @@ export function DocumentTypesPage() {
                     <td className="max-w-[22rem] px-4 py-3 text-xs text-ink-600">
                       {docType.description ?? <span className="text-ink-400">???</span>}
                     </td>
-                    <td className="px-4 py-3">
+                    {canManage ? <td className="px-4 py-3">
                       <DocTypeStatusBadge status={docType.status} />
-                    </td>
+                    </td> : null}
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-500">
                       {docType.created_at ? formatDateOnly(docType.created_at) : "???"}
                     </td>
@@ -281,7 +292,7 @@ export function DocumentTypesPage() {
                 {docType.description ? (
                   <p className="mt-1 text-xs leading-5 text-ink-500">{docType.description}</p>
                 ) : null}
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                {canManage ? <div className="mt-2 flex flex-wrap gap-1.5">
                   <Button variant="secondary" size="sm" onClick={() => openEdit(docType)} disabled={busy !== null}>
                     <PencilLine aria-hidden className="h-3.5 w-3.5" />
                     Edit
@@ -309,7 +320,7 @@ export function DocumentTypesPage() {
                     <Trash2 aria-hidden className="h-3.5 w-3.5" />
                     Delete
                   </Button>
-                </div>
+                </div> : null}
               </li>
             ))}
           </ul>
@@ -318,7 +329,7 @@ export function DocumentTypesPage() {
 
       {/* Create / edit modal (??5C SA4 validation: name 3???80, unique; description optional).
           The `key` remounts the form with fresh state whenever the target changes. */}
-      <DocTypeFormModal
+      {canManage ? <DocTypeFormModal
         key={formOpen ? `open-${editing?.doc_type_id ?? "new"}` : "closed"}
         open={formOpen}
         editing={editing}
@@ -339,10 +350,10 @@ export function DocumentTypesPage() {
         }}
         onFail={fail}
         onBusyChange={setBusy}
-      />
+      /> : null}
 
       {/* Delete confirmation (??9.2) */}
-      <Modal
+      {canManage ? <Modal
         open={deleting !== null}
         onClose={() => setDeleting(null)}
         title={`Delete "${deleting?.name ?? ""}"?`}
@@ -366,7 +377,7 @@ export function DocumentTypesPage() {
           Existing requests keep their stored document label, so history stays
           readable. If you only want to hide it from new requests, archive it instead.
         </p>
-      </Modal>
+      </Modal> : null}
     </div>
   );
 }
@@ -421,7 +432,7 @@ function DocTypeFormModal({
       const saved = editing
         ? await docDeskService.updateDocumentType(editing.doc_type_id, {
             name: name.trim(),
-            description: description.trim() || undefined,
+            description: description.trim(),
           })
         : await docDeskService.createDocumentType({
             name: name.trim(),

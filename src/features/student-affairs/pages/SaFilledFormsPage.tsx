@@ -89,7 +89,7 @@ export function SaFilledFormsPage() {
       <PageHeader
         title="Filled Forms to Review"
         description="Requests answered with an attached form. Review returned filled-in forms, or follow up on ones still waiting for the requester."
-        crumbs={[{ label: "Student Affairs", to: "/sa/dashboard" }, { label: "Filled Forms to Review" }]}
+        crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: "Filled Forms to Review" }]}
       />
 
       {/* Filters (??5C SA6) */}
@@ -139,7 +139,7 @@ export function SaFilledFormsPage() {
           action={
             tab === "returned" ? (
               <Link
-                to="/sa/requests?status=answered"
+                to="/admin/requests?status=answered"
                 className="inline-flex h-10 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
               >
                 Open answered queue
@@ -168,7 +168,7 @@ export function SaFilledFormsPage() {
                   <tr key={request.request_id} className="transition-colors hover:bg-primary-50/40">
                     <td className="px-4 py-3">
                       <Link
-                        to={`/sa/requests/${request.request_id}`}
+                        to={`/admin/requests/${request.request_id}`}
                         className="font-mono text-xs font-semibold text-primary-700 hover:underline"
                       >
                         {request.request_id}
@@ -213,7 +213,7 @@ export function SaFilledFormsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
-                        to={`/sa/requests/${request.request_id}`}
+                        to={`/admin/requests/${request.request_id}`}
                         aria-label={`View request ${request.request_id}`}
                         className="inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-50"
                       >
@@ -233,7 +233,7 @@ export function SaFilledFormsPage() {
               <li key={request.request_id} className="rounded-card border border-line bg-surface px-4 py-3 shadow-card">
                 <div className="flex items-center justify-between gap-2">
                   <Link
-                    to={`/sa/requests/${request.request_id}`}
+                    to={`/admin/requests/${request.request_id}`}
                     className="font-mono text-xs font-semibold text-primary-700 hover:underline"
                   >
                     {request.request_id}

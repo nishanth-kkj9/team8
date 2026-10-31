@@ -1,25 +1,31 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { useDemoAuth } from "../context/DemoAuthContext";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { RequesterDashboardPage } from "../features/requester/pages/RequesterDashboardPage";
 import { NewRequestPage } from "../features/requester/pages/NewRequestPage";
 import { MyRequestsPage } from "../features/requester/pages/MyRequestsPage";
 import { RequestDetailPage } from "../features/requester/pages/RequestDetailPage";
 import { ProfilePage } from "../features/requester/pages/ProfilePage";
-import { SaDashboardPage } from "../features/student-affairs/pages/SaDashboardPage";
-import { SaQueuePage } from "../features/student-affairs/pages/SaQueuePage";
-import { SaRequestDetailPage } from "../features/student-affairs/pages/SaRequestDetailPage";
-import { DocumentTypesPage } from "../features/student-affairs/pages/DocumentTypesPage";
+import { DocumentCatalogPage } from "../features/requester/pages/DocumentCatalogPage";
 import { TurnaroundTimePage } from "../features/student-affairs/pages/TurnaroundTimePage";
 import { SaFilledFormsPage } from "../features/student-affairs/pages/SaFilledFormsPage";
 import { AdminDashboardPage } from "../features/admin/pages/AdminDashboardPage";
-import { AdminUsersNewPage } from "../features/admin/pages/AdminUsersNewPage";
 import { AdminAllRequestsPage } from "../features/admin/pages/AdminAllRequestsPage";
 import { AdminRequestDetailPage } from "../features/admin/pages/AdminRequestDetailPage";
 import { AdminDocumentTypesPage } from "../features/admin/pages/AdminDocumentTypesPage";
+import { DocumentTypesPage } from "../features/student-affairs/pages/DocumentTypesPage";
+import { AdminUsersNewPage } from "../features/admin/pages/AdminUsersNewPage";
 import { ProtectedRoute } from "../routes/ProtectedRoute";
 import { HomeRedirect } from "../routes/HomeRedirect";
 import { NotFoundPage } from "../routes/NotFoundPage";
+import { isStudentAffairs } from "../lib/permissions";
 
+function AdminDocumentTypesRoute() {
+  const { profile } = useDemoAuth();
+  return isStudentAffairs(profile) ? <DocumentTypesPage /> : <AdminDocumentTypesPage />;
+}
+
+/** DocDesk has two portals: students and the College Main Admin staff. */
 export const router = createBrowserRouter([
   { path: "/", element: <HomeRedirect /> },
   { path: "/login", element: <LoginPage /> },
@@ -32,21 +38,9 @@ export const router = createBrowserRouter([
       { path: "requests", element: <MyRequestsPage /> },
       { path: "requests/new", element: <NewRequestPage /> },
       { path: "requests/:requestId", element: <RequestDetailPage /> },
+      { path: "document-types", element: <DocumentCatalogPage /> },
+      { path: "document-types/:docTypeId", element: <DocumentCatalogPage /> },
       { path: "profile", element: <ProfilePage /> },
-    ],
-  },
-  {
-    path: "/sa",
-    element: <ProtectedRoute area="student-affairs" />,
-    children: [
-      { index: true, element: <Navigate to="/sa/dashboard" replace /> },
-      { path: "dashboard", element: <SaDashboardPage /> },
-      { path: "requests", element: <SaQueuePage /> },
-      { path: "requests/new", element: <NewRequestPage /> },
-      { path: "requests/:requestId", element: <SaRequestDetailPage /> },
-      { path: "document-types", element: <DocumentTypesPage /> },
-      { path: "turnaround-time", element: <TurnaroundTimePage /> },
-      { path: "filled-forms", element: <SaFilledFormsPage /> },
     ],
   },
   {
@@ -55,10 +49,12 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/admin/dashboard" replace /> },
       { path: "dashboard", element: <AdminDashboardPage /> },
-      { path: "users/new", element: <AdminUsersNewPage /> },
       { path: "requests", element: <AdminAllRequestsPage /> },
       { path: "requests/:requestId", element: <AdminRequestDetailPage /> },
-      { path: "document-types", element: <AdminDocumentTypesPage /> },
+      { path: "document-types", element: <AdminDocumentTypesRoute /> },
+      { path: "turnaround-time", element: <TurnaroundTimePage /> },
+      { path: "filled-forms", element: <SaFilledFormsPage /> },
+      { path: "users/new", element: <AdminUsersNewPage /> },
     ],
   },
   { path: "*", element: <NotFoundPage /> },

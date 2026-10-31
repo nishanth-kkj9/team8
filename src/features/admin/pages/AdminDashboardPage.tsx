@@ -1,15 +1,16 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, ChevronRight, Clock3, Inbox, MailCheck, Search, UserPlus } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock3, Inbox, MailCheck, Search, UserPlus, XCircle } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
+import { useAdminDecisions } from "../../../hooks/useAdminDecisions";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { StatCard } from "../../../components/ui/StatCard";
 import { Input } from "../../../components/ui/Field";
 import { Button } from "../../../components/ui/Button";
 import { countByStatus } from "../../requester/pages/RequesterDashboardPage";
-import { RequestStatusBadge } from "../../../components/ui/StatusBadge";
+import { AdminDecisionBadge, RequestStatusBadge } from "../../../components/ui/StatusBadge";
 import { formatDateTime } from "../../../lib/date";
 import type { DocDeskStatus } from "../../../types/request";
 
@@ -21,18 +22,28 @@ const STATUS_BARS: ReadonlyArray<[DocDeskStatus, string, string]> = [
 ];
 
 /**
- * Screen A1 ??? Admin Dashboard (??5D): read-only oversight across the
- * institution. Status counters, recent requests, distribution by document
- * type and a search control that hands off to the All Requests register.
- * No write controls exist anywhere in this portal.
+ * Screen A1 ??? College Main Faculty dashboard: institution-wide oversight,
+ * status and approval counters, recent requests, distribution by document type
+ * and a search control that hands off to the All Requests register.
  */
 export function AdminDashboardPage() {
   const { profile } = useAuth();
   const { requests, docTypes, loading } = useDocDeskData();
+  const adminDecisions = useAdminDecisions();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
   const counts = countByStatus(requests);
+  const decisionCounts = useMemo(() => {
+    let approved = 0;
+    let rejected = 0;
+    for (const request of requests) {
+      const decision = adminDecisions[request.request_id]?.decision;
+      if (decision === "approved") approved += 1;
+      else if (decision === "rejected") rejected += 1;
+    }
+    return { approved, rejected, awaiting: requests.length - approved - rejected };
+  }, [requests, adminDecisions]);
 
   const byType = useMemo(() => {
     const map = new Map<string, number>();
@@ -60,11 +71,11 @@ export function AdminDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Admin dashboard"
-        description={`Read-only oversight of all document requests across ${profile?.institution_name ?? "the institution"}.`}
+        description={`Read, view, approve or reject document requests across ${profile?.institution_name ?? "the institution"}.`}
         crumbs={[{ label: "Admin" }, { label: "Dashboard" }]}
       />
 
-      <Link
+      {profile?.role === "admin" && <Link
         to="/admin/users/new"
         className="flex items-center justify-between gap-4 rounded-card border border-primary-200 bg-primary-50 p-4 text-primary-900 shadow-sm transition-colors hover:bg-primary-100"
       >
@@ -73,14 +84,14 @@ export function AdminDashboardPage() {
             <UserPlus className="h-5 w-5" />
           </span>
           <span>
-            <span className="block text-sm font-semibold">Register a student &amp; generate OTP</span>
-            <span className="block text-xs text-primary-700">Create an account for a student and obtain their sign-in OTP.</span>
+            <span className="block text-sm font-semibold">Create a campus account</span>
+            <span className="block text-xs text-primary-700">Create a Student or Admin account and obtain the sign-in OTP.</span>
           </span>
         </span>
         <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-primary-600" />
-      </Link>
+      </Link>}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Total Requests" value={counts.total} icon={Inbox} />
         <StatCard label="Pending" value={counts.pending} icon={Clock3} tone="amber" />
         <StatCard label="Answered" value={counts.answered} icon={MailCheck} tone="blue" />
@@ -90,6 +101,8 @@ export function AdminDashboardPage() {
           icon={CheckCircle2}
           tone="emerald"
         />
+        <StatCard label="Approved" value={decisionCounts.approved} icon={CheckCircle2} tone="emerald" />
+        <StatCard label="Rejected" value={decisionCounts.rejected} icon={XCircle} tone="red" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
@@ -134,6 +147,9 @@ export function AdminDashboardPage() {
                           {formatDateTime(request.created_at)}
                         </span>
                       </span>
+                      <AdminDecisionBadge
+                        decision={adminDecisions[request.request_id]?.decision}
+                      />
                       <RequestStatusBadge status={request.status} />
                       <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-ink-300" />
                     </Link>
@@ -259,9 +275,10 @@ export function AdminDashboardPage() {
       <div className="flex items-start gap-2 rounded-card border border-primary-100 bg-primary-50 px-4 py-3 text-xs text-primary-800">
         <Inbox aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <p>
-          Admin is read-only in DocDesk: no create, edit, withdraw, answer, upload, TAT
-          or document-type controls appear in this portal, and the API rejects any Admin
-          mutation with 403.
+          College Main Faculty reads and views every request and approves or rejects it
+          from the request detail screen. Approve/reject decisions are stored in this
+          browser; the CampusOS API still owns the pending → answered → acknowledged
+          lifecycle.
         </p>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { EmptyState } from "../../../components/ui/EmptyState";
 import { DocTypeStatusBadge } from "../../../components/ui/StatusBadge";
 import { formatDateOnly } from "../../../lib/date";
 import { cn } from "../../../lib/cn";
+import { Button } from "../../../components/ui/Button";
 import type { DocumentTypeStatus } from "../../../types/document";
 
 type Filter = "all" | DocumentTypeStatus;
@@ -17,7 +18,7 @@ type Filter = "all" | DocumentTypeStatus;
  * rejects any Admin mutation with 403.
  */
 export function AdminDocumentTypesPage() {
-  const { docTypes, loading } = useDocDeskData();
+  const { docTypes, loading, error, refresh } = useDocDeskData();
   const [filter, setFilter] = useState<Filter>("all");
 
   const counts = useMemo(
@@ -74,7 +75,16 @@ export function AdminDocumentTypesPage() {
         })}
       </div>
 
-      {loading && docTypes.length === 0 ? (
+      {error ? (
+        <div role="alert" className="flex flex-col gap-3 rounded-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>Could not load document types. {error}</span>
+          <Button variant="secondary" onClick={() => void refresh()} disabled={loading}>
+            {loading ? "Retrying…" : "Retry"}
+          </Button>
+        </div>
+      ) : null}
+
+      {error ? null : loading && docTypes.length === 0 ? (
         <div className="rounded-card border border-line bg-surface p-8 text-center text-sm text-ink-500 shadow-card">
           Loading document types???
         </div>

@@ -2,21 +2,31 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   CalendarClock,
+  CheckCircle2,
   Download,
-  Eye,
   FileQuestion,
   FileUp,
   MailCheck,
   Settings2,
   ShieldCheck,
+  Undo2,
+  XCircle,
 } from "lucide-react";
 import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useToast } from "../../../context/ToastContext";
 import { docDeskService } from "../../../services/serviceProvider";
+import {
+  clearAdminDecision,
+  setAdminDecision,
+  type AdminDecision,
+} from "../../../services/adminDecisions";
+import { useAdminDecisions } from "../../../hooks/useAdminDecisions";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
-import { RequestStatusBadge } from "../../../components/ui/StatusBadge";
+import { Modal } from "../../../components/ui/Modal";
+import { Field, Textarea } from "../../../components/ui/Field";
+import { AdminDecisionBadge, RequestStatusBadge } from "../../../components/ui/StatusBadge";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { RequestTimeline } from "../../requests/components/RequestTimeline";
 import { AnswerPanel } from "../../requests/components/AnswerPanel";
@@ -25,6 +35,7 @@ import { downloadFile } from "../../../lib/download";
 import { formatDateTime, formatDateOnly } from "../../../lib/date";
 import { ROLE_LABELS } from "../../../types/auth";
 import {
+  canDecideRequest,
   canDownloadAnswerDocument,
   canDownloadFilledForm,
 } from "../../../lib/permissions";
@@ -33,21 +44,24 @@ import type { DocRequest } from "../../../types/request";
 type Busy = "document" | "filled-form" | null;
 
 /**
- * Screen A3 ??? Request Details, read-only (??5D). Admin can inspect the full
- * record ??? requester profile, TAT, answer, attached documents, acknowledgement
- * date ??? and download the answer document / filled-in form. Every mutation is
- * intentionally absent: the Admin role is read-only in DocDesk and the API
- * returns 403 for any write.
+ * Screen A3 ??? Request Details. College Main Faculty (Admin) can inspect the
+ * full record and download files, and can approve or reject the request. The
+ * decision is stored as a frontend-only overlay because the CampusOS API keeps
+ * Admin read-only and returns 403 for any DocDesk mutation.
  */
 export function AdminRequestDetailPage() {
   const { requestId } = useParams<{ requestId: string }>();
   const { profile } = useDemoAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const adminDecisions = useAdminDecisions();
 
   const [request, setRequest] = useState<DocRequest | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "notfound">("loading");
   const [busy, setBusy] = useState<Busy>(null);
+  const [decisionOpen, setDecisionOpen] = useState(false);
+  const [pendingDecision, setPendingDecision] = useState<AdminDecision | null>(null);
+  const [decisionNote, setDecisionNote] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +103,44 @@ export function AdminRequestDetailPage() {
 
   const canDownloadDoc = canDownloadAnswerDocument(profile, request);
   const canDownloadFilled = canDownloadFilledForm(profile, request);
+  const decision = adminDecisions[request.request_id] ?? null;
+  const canDecide = canDecideRequest(profile, request);
+
+  const openDecision = (next: AdminDecision) => {
+    setPendingDecision(next);
+    setDecisionNote(decision?.note ?? "");
+    setDecisionOpen(true);
+  };
+
+  const submitDecision = () => {
+    if (!pendingDecision || !profile) return;
+    setAdminDecision(request.request_id, {
+      decision: pendingDecision,
+      note: decisionNote.trim() || undefined,
+      decided_by: profile.name,
+      decided_at: new Date().toISOString(),
+    });
+    toast({
+      title: pendingDecision === "approved" ? "Request approved" : "Request rejected",
+      description:
+        pendingDecision === "approved"
+          ? `${request.request_id} is approved by the College Main Faculty.`
+          : `${request.request_id} is rejected by the College Main Faculty.`,
+      variant: pendingDecision === "approved" ? "success" : "error",
+    });
+    setDecisionOpen(false);
+    setPendingDecision(null);
+    setDecisionNote("");
+  };
+
+  const undoDecision = () => {
+    clearAdminDecision(request.request_id);
+    toast({
+      title: "Decision cleared",
+      description: `${request.request_id} is awaiting a decision again.`,
+      variant: "info",
+    });
+  };
 
   const onDownloadDocument = async () => {
     setBusy("document");
@@ -149,12 +201,29 @@ export function AdminRequestDetailPage() {
           { label: request.request_id },
         ]}
         actions={
-          <span className="flex items-center gap-2">
+          <span className="flex flex-wrap items-center gap-2">
             <RequestStatusBadge status={request.status} />
-            <span className="inline-flex items-center gap-1 rounded-full border border-line bg-slate-50 px-2.5 py-1 text-xs font-medium text-ink-500">
-              <Eye aria-hidden className="h-3 w-3" />
-              Read-only
-            </span>
+            <AdminDecisionBadge decision={decision?.decision} />
+            {canDecide ? (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => openDecision("approved")}
+                  className="bg-emerald-700 hover:bg-emerald-800"
+                >
+                  <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => openDecision("rejected")}
+                >
+                  <XCircle aria-hidden className="h-3.5 w-3.5" />
+                  Reject
+                </Button>
+              </>
+            ) : null}
           </span>
         }
       />
@@ -342,17 +411,79 @@ export function AdminRequestDetailPage() {
             </Card>
           ) : null}
 
-          <Card className="border-primary-100 bg-primary-50/50">
-            <CardBody className="space-y-2">
+          <Card
+            className={
+              decision?.decision === "approved"
+                ? "border-emerald-200 bg-emerald-50/40"
+                : decision?.decision === "rejected"
+                  ? "border-red-200 bg-red-50/40"
+                  : "border-primary-100 bg-primary-50/50"
+            }
+          >
+            <CardBody className="space-y-3">
               <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
                 <ShieldCheck aria-hidden className="h-4 w-4 text-primary-700" />
-                Read-only oversight
+                Approval decision
               </h2>
-              <p className="text-xs leading-5 text-ink-600">
-                Admin can inspect requests and download available files. Answers, TAT,
-                uploads and lifecycle changes belong to Student Affairs and requesters ???
-                the API rejects any Admin mutation with 403.
-              </p>
+              <AdminDecisionBadge decision={decision?.decision} />
+              {decision ? (
+                <div className="space-y-1 text-xs leading-5 text-ink-600">
+                  <p>
+                    Decided by <strong>{decision.decided_by ?? "College Main Faculty"}</strong>{" "}
+                    on {formatDateTime(decision.decided_at)}.
+                  </p>
+                  {decision.note ? (
+                    <p className="rounded-control border border-line bg-surface px-3 py-2 text-ink-700">
+                      {decision.note}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-xs leading-5 text-ink-600">
+                  This request is waiting for the College Main Faculty to read, view and
+                  approve or reject it.
+                </p>
+              )}
+
+              {canDecide ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => openDecision("approved")}
+                    className="bg-emerald-700 hover:bg-emerald-800"
+                  >
+                    <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+                    {decision?.decision === "approved" ? "Update approval" : "Approve"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => openDecision("rejected")}
+                  >
+                    <XCircle aria-hidden className="h-3.5 w-3.5" />
+                    {decision?.decision === "rejected" ? "Update rejection" : "Reject"}
+                  </Button>
+                  {decision ? (
+                    <Button size="sm" variant="secondary" onClick={undoDecision}>
+                      <Undo2 aria-hidden className="h-3.5 w-3.5" />
+                      Clear decision
+                    </Button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-xs leading-5 text-ink-500">
+                  Acknowledged requests are closed, so the decision is locked.
+                </p>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody className="space-y-2">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
+                <Download aria-hidden className="h-4 w-4 text-primary-700" />
+                Files
+              </h2>
               {request.document || request.filled_form ? (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {request.document && canDownloadDoc ? (
@@ -378,11 +509,83 @@ export function AdminRequestDetailPage() {
                     </Button>
                   ) : null}
                 </div>
-              ) : null}
+              ) : (
+                <p className="text-xs leading-5 text-ink-500">
+                  No answer document or filled-in form is available yet.
+                </p>
+              )}
             </CardBody>
           </Card>
         </div>
       </div>
+
+      <Modal
+        open={decisionOpen}
+        onClose={() => {
+          setDecisionOpen(false);
+          setPendingDecision(null);
+        }}
+        title={
+          pendingDecision === "approved" ? "Approve this request?" : "Reject this request?"
+        }
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setDecisionOpen(false);
+                setPendingDecision(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant={pendingDecision === "rejected" ? "danger" : "primary"}
+              onClick={submitDecision}
+              className={
+                pendingDecision === "approved" ? "bg-emerald-700 hover:bg-emerald-800" : undefined
+              }
+            >
+              {pendingDecision === "approved" ? (
+                <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+              ) : (
+                <XCircle aria-hidden className="h-3.5 w-3.5" />
+              )}
+              {pendingDecision === "approved" ? "Confirm approval" : "Confirm rejection"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p>
+            <strong>{request.request_id}</strong> — {request.doc_type_name} requested by{" "}
+            {request.requested_by_name ?? request.requested_by}.
+          </p>
+          <Field
+            label="Decision note (optional)"
+            htmlFor="decision-note"
+            hint="Explain the reason for the decision for the institution record."
+          >
+            <Textarea
+              id="decision-note"
+              value={decisionNote}
+              onChange={(event) => setDecisionNote(event.target.value)}
+              placeholder={
+                pendingDecision === "approved"
+                  ? "Approved. Please prepare the document."
+                  : "Rejected. Reason for rejection…"
+              }
+              maxLength={500}
+            />
+          </Field>
+          <p className="text-xs text-ink-500">
+            This decision is stored in this browser only. The CampusOS API remains the
+            source of the request lifecycle.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

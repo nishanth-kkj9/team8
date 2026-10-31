@@ -60,7 +60,7 @@ export function NewRequestPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const isStudentAffairs = location.pathname.startsWith("/sa/");
+  const isStudentAffairs = location.pathname.startsWith("/admin/");
   const routeBase = isStudentAffairs ? "/sa" : "/app";
   const [docTypes, setDocTypes] = useState<DocType[]>([]);
   const [typesLoading, setTypesLoading] = useState(true);
@@ -155,7 +155,7 @@ export function NewRequestPage() {
     <div className="space-y-6">
       <PageHeader
         title="Request a Document"
-        description="Request an official academic document from Student Affairs. Select the document you need and explain your reason."
+        description="Submit your document request directly to CampusOS. Admin can view it, and Student Affairs provides the response."
         crumbs={[{ label: isStudentAffairs ? "Student Affairs" : "Requester portal", to: `${routeBase}/dashboard` }, { label: "Request a Document" }]}
       />
 
@@ -165,7 +165,7 @@ export function NewRequestPage() {
             <FilePlus2 aria-hidden className="h-4 w-4 text-primary-700" />
             New Document Request
           </h2>
-          <p className="text-xs text-ink-500">Requests are reviewed by the Student Affairs office.</p>
+          <p className="text-xs text-ink-500">Your request is visible in the Admin request list. Student Affairs handles the response.</p>
         </CardHeader>
         <CardBody>
           <RequestForm
@@ -175,7 +175,7 @@ export function NewRequestPage() {
             documentTypesLoading={typesLoading}
             documentTypesError={typesError}
             onRetryDocumentTypes={() => setRetry((value) => value + 1)}
-            documentTypeDisabled={typesLoading || !!typesError || !docTypes.some((type) => type.status === "active")}
+            documentTypeDisabled={typesLoading || !!typesError}
             submitLabel={retrySeconds > 0 ? `Retry in ${retrySeconds}s` : "Submit Request"}
             submitting={submitting}
             submitDisabled={retrySeconds > 0 || typesLoading || !!typesError || !docTypes.some((type) => type.status === "active")}

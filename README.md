@@ -23,7 +23,7 @@ npm run preview
 
 The login form accepts a registered email and OTP. Team 8's pre-provisioned Admin uses `POST /api/v1/auth/admin/login`; other accounts use `POST /api/v1/auth/login`. The app verifies the returned bearer token, expiry, and server profile using `/admin/me` or `/users/me` before granting access. CampusOS's Flow Guide says the OTP is shared by the team; account-creation responses may return this same team OTP. The Admin account screen labels it as shared and displays it only in the in-memory success panel when the API returns it.
 
-Students, Faculty, and ordinary Office Staff use the requester portal. Student Affairs is Office Staff whose department is Student Affairs. Admin can browse DocDesk read-only and download permitted files. The separate Admin-only **Create Campus Account** screen provisions Student, Faculty, or Office Staff through the CampusOS user API; it is outside the DocDesk request portal. There is no public signup or Admin signup.
+DocDesk has two portals: Student and Admin. Students submit and track document requests. Admin staff review requests and manage the document types students can select. The Admin account can create Student accounts and Admin staff accounts; staff accounts use CampusOS's `office_staff` role in the Student Affairs department so they can manage document types. There is no public signup.
 
 CampusOS tokens are stored in `sessionStorage` for the browser session. This enables bearer API requests but remains accessible to same-origin JavaScript; keep dependencies trusted and deploy with a restrictive content-security policy.
 

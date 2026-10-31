@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { CalendarClock, CalendarPlus, ListChecks, TriangleAlert } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
+import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useToast } from "../../../context/ToastContext";
+import { canSetTat } from "../../../lib/permissions";
 import { docDeskService } from "../../../services/serviceProvider";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
@@ -31,6 +33,7 @@ const DEFAULT_DATE = () => dateOnlyFromToday(7);
  */
 export function TurnaroundTimePage() {
   const { requests, refresh } = useDocDeskData();
+  const { profile } = useDemoAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -134,6 +137,10 @@ export function TurnaroundTimePage() {
     }
   }, [someSelected]);
 
+  if (!canSetTat(profile)) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
   const toggleOne = (requestId: string) => {
     setBulkError(null);
     setSelectedIds((prev) => {
@@ -208,7 +215,7 @@ export function TurnaroundTimePage() {
         <PageHeader
           title="Turnaround Time"
           description="Set expected-by dates so requesters know when to expect their documents."
-          crumbs={[{ label: "Student Affairs", to: "/sa/dashboard" }, { label: "Turnaround Time" }]}
+          crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: "Turnaround Time" }]}
         />
         <EmptyState
           icon={CalendarClock}
@@ -216,7 +223,7 @@ export function TurnaroundTimePage() {
           description="TAT can only be set on pending requests. When new requests arrive, set their expected-by date here."
           action={
             <Link
-              to="/sa/requests?status=pending"
+              to="/admin/requests?status=pending"
               className="inline-flex h-10 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
             >
               Open pending queue
@@ -232,7 +239,7 @@ export function TurnaroundTimePage() {
       <PageHeader
         title="Turnaround Time"
         description="Set expected-by dates for single requests or in bulk. Only pending requests may receive a TAT."
-        crumbs={[{ label: "Student Affairs", to: "/sa/dashboard" }, { label: "Turnaround Time" }]}
+          crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: "Turnaround Time" }]}
       />
 
       <div className="grid gap-6 xl:grid-cols-5">
@@ -387,7 +394,7 @@ export function TurnaroundTimePage() {
                       </td>
                       <td className="px-3 py-2.5">
                         <Link
-                          to={`/sa/requests/${request.request_id}`}
+                          to={`/admin/requests/${request.request_id}`}
                           className="font-mono text-xs font-semibold text-primary-700 hover:underline"
                         >
                           {request.request_id}

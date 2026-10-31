@@ -85,10 +85,12 @@ export function DocDeskDataProvider({ children }: { children: ReactNode }) {
         } while (cursor);
         return [...rows.values()];
       };
-      const [allRequests, allDocTypes] = await Promise.all([
+      const [allRequests, activeDocTypes, archivedDocTypes] = await Promise.all([
         loadAll((cursor) => docDeskService.listRequests({ limit: 100, ...(cursor ? { cursor } : {}) }), (r) => r.request_id),
-        loadAll((cursor) => docDeskService.listDocumentTypes({ limit: 100, ...(cursor ? { cursor } : {}) }), (t) => t.doc_type_id),
+        loadAll((cursor) => docDeskService.listDocumentTypes({ status: "active", limit: 100, ...(cursor ? { cursor } : {}) }), (t) => t.doc_type_id),
+        loadAll((cursor) => docDeskService.listDocumentTypes({ status: "archived", limit: 100, ...(cursor ? { cursor } : {}) }), (t) => t.doc_type_id),
       ]);
+      const allDocTypes = [...activeDocTypes, ...archivedDocTypes];
       if (sequence === loadSequence.current) {
         setRequests(allRequests as DocRequest[]);
         setDocTypes(allDocTypes as DocType[]);

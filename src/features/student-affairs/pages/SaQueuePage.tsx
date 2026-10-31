@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarClock, Inbox, ListChecks, SearchX, X } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
+import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useToast } from "../../../context/ToastContext";
+import { canSetTat } from "../../../lib/permissions";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
@@ -34,7 +36,9 @@ const PAGE_SIZE = 8;
 
 export function SaQueuePage() {
   const { requests, docTypes, loading } = useDocDeskData();
+  const { profile } = useDemoAuth();
   const { toast } = useToast();
+  const canSetTatHere = canSetTat(profile);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
@@ -134,17 +138,17 @@ export function SaQueuePage() {
         title={heading}
         description={
           status === "pending"
-            ? "Pending applications waiting for a Student Affairs response."
+            ? "Pending applications waiting for an Admin response."
             : status === "answered"
               ? "Requests that have been answered and are waiting for acknowledgement or a filled-in form."
               : status === "acknowledged"
                 ? "Closed requests the requester has acknowledged. View and download only."
                 : "Every document request across the institution, from every requester role."
         }
-        crumbs={[{ label: "Student Affairs", to: "/sa/dashboard" }, { label: heading }]}
+        crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: heading }]}
         actions={
           <Link
-            to="/sa/requests?status=pending"
+            to="/admin/requests?status=pending"
             className="inline-flex h-10 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
           >
             Open pending queue
@@ -251,9 +255,9 @@ export function SaQueuePage() {
           </p>
           <RequestTable
             requests={visibleRequests}
-            detailPathPrefix="/sa/requests"
+            detailPathPrefix="/admin/requests"
             showRequester
-            selectable={status === "pending"}
+            selectable={status === "pending" && canSetTatHere}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
           />
@@ -270,7 +274,7 @@ export function SaQueuePage() {
       )}
 
       {/* Bulk-TAT selection bar (??5C SA2: checkbox selection for bulk TAT, pending only) */}
-      {status === "pending" && selectedIds.size > 0 ? (
+      {status === "pending" && canSetTatHere && selectedIds.size > 0 ? (
         <div
           role="region"
           aria-label="Bulk TAT selection"
@@ -292,7 +296,7 @@ export function SaQueuePage() {
           <Button
             size="sm"
             onClick={() =>
-              navigate(`/sa/turnaround-time?selected=${encodeURIComponent([...selectedIds].join(","))}`)
+              navigate(`/admin/turnaround-time?selected=${encodeURIComponent([...selectedIds].join(","))}`)
             }
           >
             <CalendarClock aria-hidden className="h-3.5 w-3.5" />

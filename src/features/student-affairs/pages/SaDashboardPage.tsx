@@ -17,7 +17,7 @@ import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { StatCard } from "../../../components/ui/StatCard";
 import { countByStatus } from "../../requester/pages/RequesterDashboardPage";
 import { formatDateOnly, formatDateTime, todayDateOnly, dateOnlyFromToday } from "../../../lib/date";
-import { isStudentAffairs } from "../../../lib/permissions";
+import { actsAsStudentAffairs } from "../../../lib/permissions";
 import type { DocRequest } from "../../../types/request";
 
 const NEWEST_FIRST = (a: { created_at: string }, b: { created_at: string }) =>
@@ -27,7 +27,7 @@ function QueueRow({ request }: { request: DocRequest }) {
   return (
     <li>
       <Link
-        to={`/sa/requests/${request.request_id}`}
+        to={`/admin/requests/${request.request_id}`}
         className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control border border-line px-3 py-2.5 transition-colors hover:border-accent-300 hover:bg-primary-50/40"
       >
         <span className="font-mono text-xs font-semibold text-primary-700">
@@ -64,7 +64,7 @@ function AttentionRow({
   return (
     <li>
       <Link
-        to={`/sa/requests/${request.request_id}`}
+        to={`/admin/requests/${request.request_id}`}
         className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control border border-line px-3 py-2.5 transition-colors hover:border-accent-300 hover:bg-primary-50/40"
       >
         <span className="font-mono text-xs font-semibold text-primary-700">
@@ -89,6 +89,7 @@ function AttentionRow({
 export function SaDashboardPage() {
   const { profile } = useDemoAuth();
   const { requests, loading } = useDocDeskData();
+  const isSaDesk = actsAsStudentAffairs(profile);
 
   const counts = countByStatus(requests);
   const firstName = profile?.name.split(/\s+/)[0] ?? "there";
@@ -120,9 +121,16 @@ export function SaDashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Student Affairs dashboard"
-        description={`Welcome, ${firstName} ??? institution-wide document request operations.`}
-        crumbs={[{ label: "Student Affairs" }, { label: "Dashboard" }]}
+        title="Admin dashboard"
+        description={
+          isSaDesk
+            ? `Welcome, ${firstName} ??? institution-wide document request operations.`
+            : `Welcome, ${firstName} ??? read every request and maintain the document-type catalog.`
+        }
+        crumbs={[
+          { label: "Admin" },
+          { label: "Dashboard" },
+        ]}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -144,24 +152,24 @@ export function SaDashboardPage() {
         <div className="grid gap-3 sm:grid-cols-3">
           {[
             {
-              to: "/sa/requests?status=pending",
+              to: "/admin/requests?status=pending",
               label: "Open Pending Queue",
               description: `${counts.pending} waiting for a response`,
               icon: ClipboardCheck,
             },
             {
-              to: "/sa/document-types",
+              to: "/admin/document-types",
               label: "Manage Document Types",
               description: "Catalog of requestable documents",
               icon: Files,
             },
             {
-              to: "/sa/turnaround-time",
+              to: "/admin/turnaround-time",
               label: "Set TAT",
               description: "Expected-by dates for pending requests",
               icon: CalendarClock,
             },
-          ].map((action) => {
+          ].filter((action) => isSaDesk || action.to !== "/admin/turnaround-time").map((action) => {
             const Icon = action.icon;
             return (
               <Link
@@ -195,7 +203,7 @@ export function SaDashboardPage() {
                 Latest pending requests
               </h2>
               <Link
-                to="/sa/requests?status=pending"
+                to="/admin/requests?status=pending"
                 className="text-sm font-medium text-accent-700 hover:underline"
               >
                 Open pending queue
@@ -229,7 +237,7 @@ export function SaDashboardPage() {
                 {recentResponses.map((request) => (
                   <li key={request.request_id}>
                     <Link
-                      to={`/sa/requests/${request.request_id}`}
+                      to={`/admin/requests/${request.request_id}`}
                       className="block rounded-control border border-line px-3 py-2.5 transition-colors hover:border-accent-300 hover:bg-primary-50/40"
                     >
                       <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -261,36 +269,38 @@ export function SaDashboardPage() {
           <h2 id="sa-needs-attention" className="text-sm font-semibold text-ink-900">
             Needs attention
           </h2>
-          <Card>
-            <CardHeader className="flex-row items-center gap-2">
-              <AlertTriangle aria-hidden className="h-4 w-4 text-amber-600" />
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500">
-                TAT due soon / overdue
-              </h3>
-            </CardHeader>
-            <CardBody>
-              {tatAttention.length === 0 ? (
-                <p className="text-xs text-ink-500">
-                  No pending requests are due within 3 days.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {tatAttention.map((request) => (
-                    <AttentionRow
-                      key={request.request_id}
-                      request={request}
-                      tone={request.tat!.expected_by < today ? "amber" : "blue"}
-                      note={
-                        request.tat!.expected_by < today
-                          ? `Overdue ??? was due ${formatDateOnly(request.tat!.expected_by)}`
-                          : `Due ${formatDateOnly(request.tat!.expected_by)}`
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-            </CardBody>
-          </Card>
+          {isSaDesk ? (
+            <Card>
+              <CardHeader className="flex-row items-center gap-2">
+                <AlertTriangle aria-hidden className="h-4 w-4 text-amber-600" />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+                  TAT due soon / overdue
+                </h3>
+              </CardHeader>
+              <CardBody>
+                {tatAttention.length === 0 ? (
+                  <p className="text-xs text-ink-500">
+                    No pending requests are due within 3 days.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {tatAttention.map((request) => (
+                      <AttentionRow
+                        key={request.request_id}
+                        request={request}
+                        tone={request.tat!.expected_by < today ? "amber" : "blue"}
+                        note={
+                          request.tat!.expected_by < today
+                            ? `Overdue ??? was due ${formatDateOnly(request.tat!.expected_by)}`
+                            : `Due ${formatDateOnly(request.tat!.expected_by)}`
+                        }
+                      />
+                    ))}
+                  </ul>
+                )}
+              </CardBody>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader className="flex-row items-center gap-2">
@@ -356,7 +366,7 @@ export function SaDashboardPage() {
         <Inbox aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <p>
           Student Affairs ??? DocDesk processing desk. You are signed in as {profile?.name}
-          {profile && isStudentAffairs(profile)
+          {profile && actsAsStudentAffairs(profile)
             ? " ??? office staff in Student Affairs, the central processing role. Answer requests from the queue or a request page."
             : "."}
         </p>

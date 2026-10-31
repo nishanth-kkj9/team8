@@ -2,20 +2,30 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   CalendarClock,
+  CheckCircle2,
   FileQuestion,
   MailCheck,
   Settings2,
+  Undo2,
   UserRound,
+  XCircle,
 } from "lucide-react";
 import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { useToast } from "../../../context/ToastContext";
 import { docDeskService } from "../../../services/serviceProvider";
+import {
+  clearAdminDecision,
+  setAdminDecision,
+  type AdminDecision,
+} from "../../../services/adminDecisions";
+import { useAdminDecisions } from "../../../hooks/useAdminDecisions";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Modal } from "../../../components/ui/Modal";
-import { RequestStatusBadge } from "../../../components/ui/StatusBadge";
+import { Field, Textarea } from "../../../components/ui/Field";
+import { AdminDecisionBadge, RequestStatusBadge } from "../../../components/ui/StatusBadge";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { AnswerPanel } from "../../requests/components/AnswerPanel";
 import { RequestTimeline } from "../../requests/components/RequestTimeline";
@@ -27,11 +37,11 @@ import { downloadFile } from "../../../lib/download";
 import { formatDateTime, formatDateOnly } from "../../../lib/date";
 import { ROLE_LABELS } from "../../../types/auth";
 import {
+  actsAsStudentAffairs,
   canAnswerRequest,
   canDownloadAnswerDocument,
   canDownloadFilledForm,
   canSetTat,
-  isStudentAffairs,
 } from "../../../lib/permissions";
 import type { DocRequest } from "../../../types/request";
 
@@ -53,6 +63,10 @@ export function SaRequestDetailPage() {
   const [busy, setBusy] = useState<Busy>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const adminDecisions = useAdminDecisions();
+  const [decisionOpen, setDecisionOpen] = useState(false);
+  const [pendingDecision, setPendingDecision] = useState<AdminDecision | null>(null);
+  const [decisionNote, setDecisionNote] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -92,12 +106,51 @@ export function SaRequestDetailPage() {
     );
   }
 
-  const isSa = isStudentAffairs(profile);
+  const isSa = actsAsStudentAffairs(profile);
   const canAnswer = isSa && canAnswerRequest(profile);
   const canSetTatHere = isSa && canSetTat(profile);
   const canDownloadDoc = canDownloadAnswerDocument(profile, request);
   const canDownloadFilled = canDownloadFilledForm(profile, request);
   const answerEditable = canAnswer && request.status === "answered";
+  const decision = adminDecisions[request.request_id] ?? null;
+  const isAdmin = profile?.role === "admin";
+  const canDecide = isAdmin && request.status !== "acknowledged";
+
+  const openDecision = (next: AdminDecision) => {
+    setPendingDecision(next);
+    setDecisionNote(decision?.note ?? "");
+    setDecisionOpen(true);
+  };
+
+  const submitDecision = () => {
+    if (!pendingDecision || !profile) return;
+    setAdminDecision(request.request_id, {
+      decision: pendingDecision,
+      note: decisionNote.trim() || undefined,
+      decided_by: profile.name,
+      decided_at: new Date().toISOString(),
+    });
+    toast({
+      title: pendingDecision === "approved" ? "Request approved" : "Request rejected",
+      description:
+        pendingDecision === "approved"
+          ? `${request.request_id} is approved by the College Main Faculty.`
+          : `${request.request_id} is rejected by the College Main Faculty.`,
+      variant: pendingDecision === "approved" ? "success" : "error",
+    });
+    setDecisionOpen(false);
+    setPendingDecision(null);
+    setDecisionNote("");
+  };
+
+  const undoDecision = () => {
+    clearAdminDecision(request.request_id);
+    toast({
+      title: "Decision cleared",
+      description: `${request.request_id} is awaiting a decision again.`,
+      variant: "info",
+    });
+  };
 
   const fail = (error: unknown, fallback: string) => {
     const message = error instanceof Error ? error.message : fallback;
@@ -201,11 +254,16 @@ export function SaRequestDetailPage() {
         title={request.request_id}
         description={request.doc_type_name}
         crumbs={[
-          { label: "Student Affairs", to: "/sa/dashboard" },
-          { label: "Requests", to: "/sa/requests" },
+          { label: "Admin", to: "/admin/dashboard" },
+          { label: "Requests", to: "/admin/requests" },
           { label: request.request_id },
         ]}
-        actions={<RequestStatusBadge status={request.status} />}
+        actions={
+          <span className="flex flex-wrap items-center gap-2">
+            <RequestStatusBadge status={request.status} />
+            {isAdmin ? <AdminDecisionBadge decision={decision?.decision} /> : null}
+          </span>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -353,6 +411,77 @@ export function SaRequestDetailPage() {
 
         {/* Side column */}
         <div className="space-y-6">
+          {isAdmin ? (
+            <Card
+              className={
+                decision?.decision === "approved"
+                  ? "border-emerald-200 bg-emerald-50/40"
+                  : decision?.decision === "rejected"
+                    ? "border-red-200 bg-red-50/40"
+                    : "border-primary-100 bg-primary-50/50"
+              }
+            >
+              <CardHeader>
+                <h2 className="text-sm font-semibold text-ink-900">Approval decision</h2>
+                <p className="text-xs text-ink-500">
+                  College Main Faculty approve/reject record.
+                </p>
+              </CardHeader>
+              <CardBody className="space-y-3">
+                <AdminDecisionBadge decision={decision?.decision} />
+                {decision ? (
+                  <div className="space-y-1 text-xs leading-5 text-ink-600">
+                    <p>
+                      Decided by{" "}
+                      <strong>{decision.decided_by ?? "College Main Faculty"}</strong> on{" "}
+                      {formatDateTime(decision.decided_at)}.
+                    </p>
+                    {decision.note ? (
+                      <p className="rounded-control border border-line bg-surface px-3 py-2 text-ink-700">
+                        {decision.note}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-xs leading-5 text-ink-600">
+                    This request is waiting for the College Main Faculty to read, view
+                    and approve or reject it.
+                  </p>
+                )}
+                {canDecide ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => openDecision("approved")}
+                      className="bg-emerald-700 hover:bg-emerald-800"
+                    >
+                      <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+                      {decision?.decision === "approved" ? "Update approval" : "Approve"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => openDecision("rejected")}
+                    >
+                      <XCircle aria-hidden className="h-3.5 w-3.5" />
+                      {decision?.decision === "rejected" ? "Update rejection" : "Reject"}
+                    </Button>
+                    {decision ? (
+                      <Button size="sm" variant="secondary" onClick={undoDecision}>
+                        <Undo2 aria-hidden className="h-3.5 w-3.5" />
+                        Clear
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-xs leading-5 text-ink-500">
+                    Acknowledged requests are closed, so the decision is locked.
+                  </p>
+                )}
+              </CardBody>
+            </Card>
+          ) : null}
+
           <Card>
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink-900">Progress</h2>
@@ -406,7 +535,7 @@ export function SaRequestDetailPage() {
                   </p>
                   {canSetTatHere ? (
                     <Link
-                      to={`/sa/turnaround-time?request=${encodeURIComponent(request.request_id)}`}
+                      to={`/admin/turnaround-time?request=${encodeURIComponent(request.request_id)}`}
                       className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-xs font-medium text-ink-700 transition-colors hover:bg-primary-50 hover:text-primary-800"
                     >
                       <CalendarClock aria-hidden className="h-3.5 w-3.5" />
@@ -455,6 +584,74 @@ export function SaRequestDetailPage() {
           filled-in form from <strong>{request.doc_type_name}</strong> and returns the
           request to <strong>pending</strong>. You can send a new answer afterwards.
         </p>
+      </Modal>
+
+      <Modal
+        open={decisionOpen}
+        onClose={() => {
+          setDecisionOpen(false);
+          setPendingDecision(null);
+        }}
+        title={
+          pendingDecision === "approved" ? "Approve this request?" : "Reject this request?"
+        }
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setDecisionOpen(false);
+                setPendingDecision(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant={pendingDecision === "rejected" ? "danger" : "primary"}
+              onClick={submitDecision}
+              className={
+                pendingDecision === "approved" ? "bg-emerald-700 hover:bg-emerald-800" : undefined
+              }
+            >
+              {pendingDecision === "approved" ? (
+                <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+              ) : (
+                <XCircle aria-hidden className="h-3.5 w-3.5" />
+              )}
+              {pendingDecision === "approved" ? "Confirm approval" : "Confirm rejection"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p>
+            <strong>{request.request_id}</strong> — {request.doc_type_name} requested by{" "}
+            {request.requested_by_name ?? request.requested_by}.
+          </p>
+          <Field
+            label="Decision note (optional)"
+            htmlFor="sa-decision-note"
+            hint="Explain the reason for the decision for the institution record."
+          >
+            <Textarea
+              id="sa-decision-note"
+              value={decisionNote}
+              onChange={(event) => setDecisionNote(event.target.value)}
+              placeholder={
+                pendingDecision === "approved"
+                  ? "Approved. Please prepare the document."
+                  : "Rejected. Reason for rejection…"
+              }
+              maxLength={500}
+            />
+          </Field>
+          <p className="text-xs text-ink-500">
+            This decision is stored in this browser only. The CampusOS API remains the
+            source of the request lifecycle.
+          </p>
+        </div>
       </Modal>
     </div>
   );

@@ -30,7 +30,24 @@ export function isStudentAffairs(
   );
 }
 
-/** Students, faculty and office staff are all requesters. Admin never is. */
+/** CampusOS grants answer and TAT mutations to Student Affairs staff only. */
+export function actsAsStudentAffairs(
+  profile: DemoProfile | null | undefined,
+): boolean {
+  return isStudentAffairs(profile);
+}
+
+/**
+ * Admin and Student Affairs can review the institution-wide request queue.
+ * Other office staff and faculty have requester access only.
+ */
+export function isCollegeAdmin(
+  profile: DemoProfile | null | undefined,
+): boolean {
+  return !!profile && (profile.role === "admin" || isStudentAffairs(profile));
+}
+
+/** CampusOS treats every non-admin account as a requester. */
 export function isRequester(profile: DemoProfile | null | undefined): boolean {
   return !!profile && profile.role !== "admin";
 }
@@ -48,19 +65,20 @@ export function canCreateRequest(
   return isRequester(profile);
 }
 
-/** Student Affairs and Admin see all requests; other requesters see their own. */
+/** College Main Admin sees all requests; students see their own. */
 export function canViewAllRequests(
   profile: DemoProfile | null | undefined,
 ): boolean {
-  return !!profile && (profile.role === "admin" || isStudentAffairs(profile));
+  return isCollegeAdmin(profile);
 }
 
 export function canAnswerRequest(
   profile: DemoProfile | null | undefined,
 ): boolean {
-  return isStudentAffairs(profile);
+  return actsAsStudentAffairs(profile);
 }
 
+/** Only Student Affairs maintains the document types students can request. */
 export function canManageDocumentTypes(
   profile: DemoProfile | null | undefined,
 ): boolean {
@@ -68,7 +86,19 @@ export function canManageDocumentTypes(
 }
 
 export function canSetTat(profile: DemoProfile | null | undefined): boolean {
-  return isStudentAffairs(profile);
+  return actsAsStudentAffairs(profile);
+}
+
+/**
+ * College Main Faculty (Admin) reviews every request and records an
+ * approve/reject decision. This decision is a frontend-only overlay: the
+ * CampusOS API keeps the request's own pending/answered/acknowledged status.
+ */
+export function canDecideRequest(
+  profile: DemoProfile | null | undefined,
+  request: DocRequest,
+): boolean {
+  return !!profile && profile.role === "admin" && request.status !== "acknowledged";
 }
 
 export function canEditOwnPendingRequest(
@@ -131,9 +161,7 @@ export function canDownloadAnswerDocument(
   return (
     !!profile &&
     !!request.document &&
-    (profile.role === "admin" ||
-      isStudentAffairs(profile) ||
-      ownsRequest(profile, request))
+    (isCollegeAdmin(profile) || ownsRequest(profile, request))
   );
 }
 
@@ -144,46 +172,35 @@ export function canDownloadFilledForm(
   return (
     !!profile &&
     !!request.filled_form &&
-    (profile.role === "admin" ||
-      isStudentAffairs(profile) ||
-      ownsRequest(profile, request))
+    (isCollegeAdmin(profile) || ownsRequest(profile, request))
   );
 }
 
-/** Which app shell / navigation area a profile belongs to. */
-export type AppArea = "requester" | "student-affairs" | "admin";
+/** DocDesk exposes a Student portal and one shared Admin portal. */
+export type AppArea = "requester" | "admin";
 
 export function areaForProfile(profile: DemoProfile): AppArea {
-  if (profile.role === "admin") return "admin";
-  if (isStudentAffairs(profile)) return "student-affairs";
+  if (isCollegeAdmin(profile)) return "admin";
   return "requester";
 }
 
-/** Route-area access rules (??4.2???4.4): students/faculty/other office staff use /app; only SA uses /sa; only admin uses /admin. Student Affairs has requester capabilities, but its portal is /sa. */
 export function canAccessArea(
   area: AppArea,
   profile: DemoProfile | null | undefined,
 ): boolean {
   if (!profile) return false;
-  if (area === "admin") return profile.role === "admin";
-  if (area === "student-affairs") return isStudentAffairs(profile);
-  return isRequester(profile) && !isStudentAffairs(profile);
+  if (area === "admin") return isCollegeAdmin(profile);
+  return profile.role !== "admin";
 }
 
 export function homePathForProfile(profile: DemoProfile | null): string {
   if (!profile) return "/login";
-  switch (areaForProfile(profile)) {
-    case "admin":
-      return "/admin/dashboard";
-    case "student-affairs":
-      return "/sa/dashboard";
-    default:
-      return "/app/dashboard";
-  }
+  return areaForProfile(profile) === "admin"
+    ? "/admin/dashboard"
+    : "/app/dashboard";
 }
 
 export const AREA_LABELS: Record<AppArea, string> = {
-  requester: "Requester portal",
-  "student-affairs": "Student Affairs portal",
-  admin: "Admin portal (read-only)",
+  requester: "Student portal",
+  admin: "Admin portal",
 };

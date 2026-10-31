@@ -63,25 +63,24 @@ const fieldsVisible = (markup: string) => {
 };
 const submitButtonMarkup = (markup: string) => markup.match(/<button[^>]*>Submit Request<\/button>/)?.[0] ?? "";
 const reasonTextareaMarkup = (markup: string) => markup.match(/<textarea[^>]*>/)?.[0] ?? "";
-const emptyMarkup = renderRequestForm();
+const emptyMarkup = renderRequestForm({ documentTypeDisabled: false });
 fieldsVisible(emptyMarkup);
 assert.match(emptyMarkup, /No active document types are currently available\./);
-assert.match(emptyMarkup, /Please contact Student Affairs\./);
+assert.match(emptyMarkup, /Please contact Admin\./);
 assert.match(emptyMarkup, /name="reason"/);
 assert.match(emptyMarkup, /0 \/ 1000/);
-assert.match(emptyMarkup, /<select[^>]*\sdisabled=/);
-assert.match(emptyMarkup, /<option[^>]*disabled[^>]*>Bonafide<\/option>/);
-assert.match(emptyMarkup, /<option[^>]*disabled[^>]*>Study Certificate<\/option>/);
-assert.match(emptyMarkup, /<option[^>]*disabled[^>]*>Marks Card<\/option>/);
+assert.match(emptyMarkup, /<fieldset[^>]*id="request-check-doc-type"/);
+assert.doesNotMatch(emptyMarkup, /<button[^>]*aria-pressed=/);
 assert.match(submitButtonMarkup(emptyMarkup), /\sdisabled=/);
 assert.doesNotMatch(reasonTextareaMarkup(emptyMarkup), /\sdisabled=/);
 passed += 1;
-console.log("PASS empty catalog keeps both request fields visible and disables type selection/submission");
+console.log("PASS empty catalog keeps both fields visible, shows the named options, and disables submission");
 
 const loadingMarkup = renderRequestForm({ documentTypesLoading: true });
 fieldsVisible(loadingMarkup);
 assert.match(loadingMarkup, /Loading active document types/);
-assert.match(loadingMarkup, /<select[^>]*\sdisabled=/);
+assert.match(loadingMarkup, /Loading active document types/);
+assert.doesNotMatch(loadingMarkup, /<button[^>]*aria-pressed=/);
 assert.match(submitButtonMarkup(loadingMarkup), /\sdisabled=/);
 assert.doesNotMatch(reasonTextareaMarkup(loadingMarkup), /\sdisabled=/);
 passed += 1;
@@ -91,7 +90,7 @@ const errorMarkup = renderRequestForm({ documentTypesError: "Catalog unavailable
 fieldsVisible(errorMarkup);
 assert.match(errorMarkup, /Catalog unavailable/);
 assert.match(errorMarkup, /Retry<\/button>/);
-assert.match(errorMarkup, /<select[^>]*\sdisabled=/);
+assert.doesNotMatch(errorMarkup, /<button[^>]*aria-pressed=/);
 assert.match(submitButtonMarkup(errorMarkup), /\sdisabled=/);
 assert.doesNotMatch(reasonTextareaMarkup(errorMarkup), /\sdisabled=/);
 passed += 1;
@@ -104,9 +103,9 @@ const activeMarkup = renderRequestForm({
   submitDisabled: false,
 });
 fieldsVisible(activeMarkup);
-assert.match(activeMarkup, /value="DTY-A" selected="">Bonafide<\/option>/);
-assert.match(activeMarkup, /value="DTY-C"[^>]*>Study Certificate<\/option>/);
-assert.match(activeMarkup, /value="DTY-D"[^>]*>Marks Card<\/option>/);
+assert.match(activeMarkup, /aria-pressed="true"[^>]*>Bonafide<\/button>/);
+assert.match(activeMarkup, /aria-pressed="false"[^>]*>Study Certificate<\/button>/);
+assert.match(activeMarkup, /aria-pressed="false"[^>]*>Marks Card<\/button>/);
 assert.match(activeMarkup, /Transcript/);
 assert.match(activeMarkup, /Proof of enrollment/);
 assert.doesNotMatch(activeMarkup, /Old Type/);

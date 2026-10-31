@@ -8,8 +8,7 @@ import { Modal } from "../ui/Modal";
 import { pageTitleFor } from "./navConfig";
 
 const AREA_TITLES: Record<AppArea, string> = {
-  requester: "Requester portal",
-  "student-affairs": "Student Affairs",
+  requester: "Student",
   admin: "Admin",
 };
 
@@ -151,7 +150,7 @@ export function Topbar({ area, onOpenMobileNav }: TopbarProps) {
             Request lifecycle: <em>pending</em> → <em>answered</em> → <em>acknowledged</em>.
           </li>
           <li>
-            Student Affairs reviews applications, sets turnaround dates, and provides answered documents.
+            Admin staff review requests, manage document types, set turnaround dates, and provide documents.
           </li>
         </ul>
       </Modal>

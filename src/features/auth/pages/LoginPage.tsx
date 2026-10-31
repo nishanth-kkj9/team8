@@ -19,7 +19,6 @@ function areaForPath(path: string) {
   if (!path) return null;
   const first = path.split("/")[1];
   if (first === "admin") return "admin" as const;
-  if (first === "sa") return "student-affairs" as const;
   if (first === "app") return "requester" as const;
   return null;
 }
@@ -114,7 +113,7 @@ export function LoginPage() {
 
           <div className="space-y-3 text-sm text-primary-100/80">
             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-accent-400" /> Students sign in with their registered email and account OTP.</div>
-            <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-accent-400" /> Admin signs in with admin@team8.com and the organiser-provided OTP.</div>
+            <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-accent-400" /> Admin signs in with the organiser-provided email and team OTP.</div>
             <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-accent-400" /> Roles are resolved from the server profile after login.</div>
           </div>
         </div>
@@ -194,6 +193,10 @@ export function LoginPage() {
           </form>
 
           <p className="text-center text-sm text-ink-500">Don&apos;t have access? Contact your campus administrator.</p>
+          <p className="text-center text-xs text-ink-400">
+            College Main Faculty: sign in, then use &ldquo;Register Student&rdquo; on your
+            dashboard to create accounts and generate OTPs.
+          </p>
 
           <p className="flex items-center justify-center gap-1.5 text-center text-xs text-ink-400">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />

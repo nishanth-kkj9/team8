@@ -7,7 +7,7 @@
  *  - Scenario 5: Filled-form round trip (upload/replace/download/remove)
  *  - Scenario 6: Document type CRUD, archive, restore, and delete
  *  - Scenario 7: Turnaround Time (TAT) and bulk TAT with atomic rollbacks
- *  - Scenario 8: Admin read-only access (no mutation controls)
+ *  - Scenario 8: Admin acts as the Student Affairs desk
  *  - Scenario 9: Other requester roles (Faculty, Ordinary Staff) without USN requirement
  */
 import { mockDocDeskService as svc } from "../tests/fixtures/mockDocDeskService";
@@ -287,15 +287,15 @@ async function runAllScenarios() {
   assert("Scenario 7", bulkFailedCleanly, "Bulk TAT with non-pending ID rejected atomically (all-or-nothing)");
 
   // -------------------------------------------------------------------------
-  // Scenario 8: Admin read-only
+  // Scenario 8: Admin as the Student Affairs desk
   // -------------------------------------------------------------------------
-  console.log("\n--- Scenario 8: Admin read-only ---");
+  console.log("\n--- Scenario 8: Admin as Student Affairs desk ---");
   svc.setViewer(admin);
   assert("Scenario 8", canViewAllRequests(admin), "Admin can view all requests");
   assert("Scenario 8", !canCreateRequest(admin), "Admin CANNOT create requests");
-  assert("Scenario 8", !canAnswerRequest(admin), "Admin CANNOT answer requests");
-  assert("Scenario 8", !canManageDocumentTypes(admin), "Admin CANNOT manage document types");
-  assert("Scenario 8", !canSetTat(admin), "Admin CANNOT set TAT");
+  assert("Scenario 8", canAnswerRequest(admin), "Admin can answer requests as Student Affairs");
+  assert("Scenario 8", canManageDocumentTypes(admin), "Admin can manage document types as Student Affairs");
+  assert("Scenario 8", canSetTat(admin), "Admin can set TAT as Student Affairs");
 
   const adminReqList = await svc.listRequests();
   const reqWithFiles = adminReqList.find((r) => !!r.document && !!r.filled_form);
@@ -309,27 +309,34 @@ async function runAllScenarios() {
   // -------------------------------------------------------------------------
   // Scenario 9: Other requester roles
   // -------------------------------------------------------------------------
-  console.log("\n--- Scenario 9: Other requester roles (Faculty, Ordinary Staff) ---");
+  console.log("\n--- Scenario 9: Student and shared Admin portals ---");
+  assert("Scenario 9", canAccessArea("requester", student), "Student can access the requester portal");
+  assert("Scenario 9", canAccessArea("admin", sa), "Student Affairs staff use the Admin portal");
+  assert("Scenario 9", canAccessArea("admin", admin), "Admin can access the shared Admin portal");
   // Faculty
   svc.setViewer(faculty);
-  assert("Scenario 9", canCreateRequest(faculty), "Faculty can create requests");
-  assert("Scenario 9", !canAccessArea("student-affairs", faculty), "Faculty cannot access /sa");
+  assert("Scenario 9", canCreateRequest(faculty), "CampusOS requester permission is retained for Faculty profiles");
+  assert("Scenario 9", !canAccessArea("requester", faculty), "Faculty cannot access the Student-only portal");
+  assert("Scenario 9", canAccessArea("admin", faculty), "Faculty can access the shared Admin portal");
+  assert("Scenario 9", canManageDocumentTypes(faculty), "Faculty can manage document types");
   const facReqs = await svc.listRequests();
   assert(
     "Scenario 9",
-    facReqs.every((r) => r.requested_by === faculty.email_id),
-    "Faculty only sees own requests",
+    facReqs.length === adminReqList.length,
+    "Faculty can read all requests as College Main Admin",
   );
 
   // Ordinary Office Staff (Accounts)
   svc.setViewer(staff);
-  assert("Scenario 9", canCreateRequest(staff), "Ordinary office staff can create requests");
-  assert("Scenario 9", !canAccessArea("student-affairs", staff), "Accounts staff cannot access /sa");
+  assert("Scenario 9", canCreateRequest(staff), "CampusOS requester permission is retained for Office Staff profiles");
+  assert("Scenario 9", !canAccessArea("requester", staff), "Ordinary Office Staff cannot access the Student-only portal");
+  assert("Scenario 9", canAccessArea("admin", staff), "Office Staff can access the shared Admin portal");
+  assert("Scenario 9", canManageDocumentTypes(staff), "Office Staff can manage document types");
   const staffReqs = await svc.listRequests();
   assert(
     "Scenario 9",
-    staffReqs.every((r) => r.requested_by === staff.email_id),
-    "Ordinary staff only sees own requests",
+    staffReqs.length === adminReqList.length,
+    "Office Staff can read all requests as College Main Admin",
   );
 
   console.log("\n=======================================================");

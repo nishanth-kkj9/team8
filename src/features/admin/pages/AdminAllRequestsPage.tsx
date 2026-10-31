@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, Inbox, SearchX, ShieldCheck } from "lucide-react";
+import { Eye, Inbox, RefreshCw, SearchX, ShieldCheck } from "lucide-react";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
+import { useAdminDecisions } from "../../../hooks/useAdminDecisions";
 import { PageHeader } from "../../../components/layout/PageHeader";
 import { Card } from "../../../components/ui/Card";
 import { EmptyState } from "../../../components/ui/EmptyState";
@@ -10,6 +11,7 @@ import { Input, Select } from "../../../components/ui/Field";
 import { STATUS_LABELS, type DocDeskStatus } from "../../../types/request";
 import type { RequestSort } from "../../requests/components/RequestFilters";
 import { cn } from "../../../lib/cn";
+import { Button } from "../../../components/ui/Button";
 
 const NEWEST_FIRST = (a: { created_at: string }, b: { created_at: string }) =>
   a.created_at < b.created_at ? 1 : -1;
@@ -22,20 +24,21 @@ const TABS: ReadonlyArray<{ value: DocDeskStatus | ""; label: string }> = [
 ];
 
 /**
- * Screen A2 ??? All Requests (??5D, read-only). The institution-wide request
- * register: Admin can browse, search and filter everything, and open the
- * read-only detail view. There are deliberately no row actions, no selection
- * checkboxes and no create button ??? the Admin role cannot mutate DocDesk
- * records (??5D, ??3.3).
+ * Screen A2 ??? All Requests. The institution-wide request register: the
+ * College Main Faculty can browse, search, filter and open each request to
+ * read, view and approve or reject it. There are no create/edit controls here;
+ * the decision itself is recorded on the request detail screen.
  */
 /** Rows shown before the "Load more" control appears (Phase 6 pagination). */
 const PAGE_SIZE = 8;
 
 export function AdminAllRequestsPage() {
-  const { requests, docTypes, loading } = useDocDeskData();
+  const { requests, docTypes, loading, refresh } = useDocDeskData();
+  const adminDecisions = useAdminDecisions();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [docTypeId, setDocTypeId] = useState("");
+  const [decisionFilter, setDecisionFilter] = useState<"all" | "approved" | "rejected" | "undecided">("all");
   const [sort, setSort] = useState<RequestSort>("newest");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -50,6 +53,12 @@ export function AdminAllRequestsPage() {
     const list = requests.filter((request) => {
       if (status && request.status !== status) return false;
       if (docTypeId && request.doc_type_id !== docTypeId) return false;
+      if (decisionFilter !== "all") {
+        const decision = adminDecisions[request.request_id]?.decision;
+        if (decisionFilter === "undecided" ? decision !== undefined : decision !== decisionFilter) {
+          return false;
+        }
+      }
       if (
         query &&
         !request.request_id.toLowerCase().includes(query) &&
@@ -75,15 +84,16 @@ export function AdminAllRequestsPage() {
       default:
         return list.sort(NEWEST_FIRST);
     }
-  }, [requests, status, docTypeId, search, sort]);
+  }, [requests, status, docTypeId, search, sort, decisionFilter, adminDecisions]);
 
-  const filtersActive = search.trim() !== "" || docTypeId !== "";
+  const filtersActive =
+    search.trim() !== "" || docTypeId !== "" || decisionFilter !== "all";
 
   // Pagination (Phase 6): collapse long lists behind a Load more control and
   // reset the window whenever the search/filter/sort inputs change.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [search, docTypeId, sort, status]);
+  }, [search, docTypeId, sort, status, decisionFilter]);
   const visibleRequests = useMemo(
     () => filtered.slice(0, visibleCount),
     [filtered, visibleCount],
@@ -103,9 +113,15 @@ export function AdminAllRequestsPage() {
               ? "Answered requests across the institution, waiting for acknowledgement or a filled-in form."
               : status === "acknowledged"
                 ? "Closed requests across the institution, kept for oversight and download."
-                : "Every document request across the institution, from every requester role. Read-only oversight."
+                : "Every document request across the institution, from every requester role. Approve or reject each request from its detail screen."
         }
         crumbs={[{ label: "Admin", to: "/admin/dashboard" }, { label: heading }]}
+        actions={
+          <Button variant="secondary" onClick={() => void refresh()} disabled={loading}>
+            <RefreshCw aria-hidden className="h-4 w-4" />
+            Refresh requests
+          </Button>
+        }
       />
 
       {/* Status tabs (kept in sync with the sidebar nav entries) */}
@@ -169,6 +185,21 @@ export function AdminAllRequestsPage() {
               ))}
           </Select>
           <Select
+            value={decisionFilter}
+            onChange={(event) =>
+              setDecisionFilter(
+                event.target.value as "all" | "approved" | "rejected" | "undecided",
+              )
+            }
+            aria-label="Filter by admin decision"
+            className="w-44"
+          >
+            <option value="all">All decisions</option>
+            <option value="undecided">Awaiting decision</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </Select>
+          <Select
             value={sort}
             onChange={(event) => setSort(event.target.value as RequestSort)}
             aria-label="Sort requests"
@@ -201,6 +232,7 @@ export function AdminAllRequestsPage() {
                 onClick={() => {
                   setSearch("");
                   setDocTypeId("");
+                  setDecisionFilter("all");
                 }}
                 className="inline-flex h-10 items-center rounded-control border border-line bg-surface px-4 text-sm font-medium text-ink-700 transition-colors hover:bg-primary-50"
               >
@@ -219,6 +251,7 @@ export function AdminAllRequestsPage() {
             requests={visibleRequests}
             detailPathPrefix="/admin/requests"
             showRequester
+            adminDecisions={adminDecisions}
           />
           {remainingCount > 0 && (
             <button
@@ -233,11 +266,11 @@ export function AdminAllRequestsPage() {
         </>
       )}
 
-      {/* Read-only reminder (??5D: no write action anywhere in the Admin UI) */}
+      {/* Approval reminder */}
       <p className="flex items-center gap-1.5 text-xs text-ink-400">
         <ShieldCheck aria-hidden className="h-3.5 w-3.5 shrink-0" />
-        Admin view is read-only ??? open a request to inspect its details and download
-        available files.
+        College Main Faculty can approve or reject each request. Decisions are recorded
+        in this browser and shown across the Admin portal.
         <Eye aria-hidden className="ml-1 h-3.5 w-3.5 shrink-0" />
       </p>
     </div>

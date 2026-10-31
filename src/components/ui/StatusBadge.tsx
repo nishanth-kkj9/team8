@@ -1,5 +1,6 @@
 import type { DocumentTypeStatus } from "../../types/document";
 import { STATUS_LABELS, type DocDeskStatus } from "../../types/request";
+import type { AdminDecision } from "../../services/adminDecisions";
 import { cn } from "../../lib/cn";
 
 /*
@@ -27,6 +28,45 @@ export function RequestStatusBadge({ status }: { status: DocDeskStatus }) {
     >
       <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
       {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+const DECISION_STYLES: Record<AdminDecision, { chip: string; dot: string; label: string }> = {
+  approved: {
+    chip: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    dot: "bg-emerald-500",
+    label: "Approved",
+  },
+  rejected: {
+    chip: "border-red-200 bg-red-50 text-red-700",
+    dot: "bg-red-500",
+    label: "Rejected",
+  },
+};
+
+export function AdminDecisionBadge({
+  decision,
+}: {
+  decision: AdminDecision | null | undefined;
+}) {
+  if (!decision) {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-dashed border-line px-2.5 py-0.5 text-xs font-medium text-ink-400">
+        Awaiting decision
+      </span>
+    );
+  }
+  const style = DECISION_STYLES[decision];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        style.chip,
+      )}
+    >
+      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
+      {style.label}
     </span>
   );
 }

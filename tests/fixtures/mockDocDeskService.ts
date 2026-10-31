@@ -5,6 +5,7 @@ import { buildSeedRequests } from "./seedRequests";
 import { buildSeedDocumentTypes } from "./seedDocumentTypes";
 import {
   canViewAllRequests,
+  isCollegeAdmin,
   isStudentAffairs,
 } from "../../src/lib/permissions";
 import {
@@ -585,11 +586,11 @@ class MockDocDeskService {
   async createDocumentType(input: CreateDocTypeInput): Promise<DocType> {
     await delay(MOCK_LATENCY_MS);
     const viewer = this.requireViewer();
-    if (!isStudentAffairs(viewer)) {
+    if (!isCollegeAdmin(viewer)) {
       throw new DocDeskServiceError(
         403,
         "FORBIDDEN",
-        "Only Student Affairs can manage document types.",
+        "Only College Main Admin staff can manage document types.",
       );
     }
     this.ensureLoaded();
@@ -628,11 +629,11 @@ class MockDocDeskService {
   ): Promise<DocType> {
     await delay(MOCK_LATENCY_MS);
     const viewer = this.requireViewer();
-    if (!isStudentAffairs(viewer)) {
+    if (!isCollegeAdmin(viewer)) {
       throw new DocDeskServiceError(
         403,
         "FORBIDDEN",
-        "Only Student Affairs can manage document types.",
+        "Only College Main Admin staff can manage document types.",
       );
     }
     this.ensureLoaded();
@@ -683,11 +684,11 @@ class MockDocDeskService {
   async deleteDocumentType(docTypeId: string): Promise<void> {
     await delay(MOCK_LATENCY_MS);
     const viewer = this.requireViewer();
-    if (!isStudentAffairs(viewer)) {
+    if (!isCollegeAdmin(viewer)) {
       throw new DocDeskServiceError(
         403,
         "FORBIDDEN",
-        "Only Student Affairs can manage document types.",
+        "Only College Main Admin staff can manage document types.",
       );
     }
     this.ensureLoaded();

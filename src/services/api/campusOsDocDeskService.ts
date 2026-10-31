@@ -18,6 +18,7 @@ import type {
 } from "../docDeskService.types";
 import { ApiError } from "./apiErrors";
 import { campusOsClient } from "./campusOsClient";
+import { isCollegeAdmin } from "../../lib/permissions";
 
 interface RawListResponse<T> {
   items: T[];
@@ -40,6 +41,11 @@ export class CampusOsDocDeskService implements DocDeskService {
 
   async listRequests(filters?: RequestFilters): Promise<PaginatedResponse<DocRequest>> {
     const queryParams: Record<string, unknown> = {};
+    if (this.currentViewer && isCollegeAdmin(this.currentViewer)) {
+      // Explicitly ask CampusOS for the institution-wide Admin queue; without
+      // this flag some deployments return only the signed-in staff member's rows.
+      queryParams.mine = false;
+    }
     if (filters?.status) {
       queryParams.status = filters.status;
     }

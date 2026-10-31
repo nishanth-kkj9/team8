@@ -3,7 +3,7 @@ import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { LIMITS, validateReason } from "../../../lib/validation";
 import { Button } from "../../../components/ui/Button";
-import { Field, Select, Textarea } from "../../../components/ui/Field";
+import { Field, Textarea } from "../../../components/ui/Field";
 import type { DocType } from "../../../types/document";
 
 export interface RequestFormValues {
@@ -11,14 +11,8 @@ export interface RequestFormValues {
   reason: string;
 }
 
-const PREFERRED_REQUEST_TYPES = [
-  { label: "Bonafide", matches: (name: string) => /bonafide|bonafied/i.test(name) },
-  { label: "Study Certificate", matches: (name: string) => /study\s*certificate/i.test(name) },
-  { label: "Marks Card", matches: (name: string) => /marks?\s*card/i.test(name) },
-] as const;
-
 interface RequestFormProps {
-  /** Active document types offered in the dropdown (??5B R2). */
+  /** Active document types offered in the selection buttons (??5B R2). */
   docTypes: DocType[];
   mode: "create" | "edit";
   initial?: Partial<RequestFormValues>;
@@ -66,14 +60,6 @@ export function RequestForm({
 
   const activeDocTypes = docTypes.filter((type) => type.status === "active");
   const selectedType = activeDocTypes.find((t) => t.doc_type_id === docTypeId);
-  const preferredOptions = PREFERRED_REQUEST_TYPES.map((preferred) => ({
-    label: preferred.label,
-    type: activeDocTypes.find((candidate) => preferred.matches(candidate.name)),
-  }));
-  const preferredIds = new Set(
-    preferredOptions.flatMap(({ type }) => type ? [type.doc_type_id] : []),
-  );
-  const otherCollegeTypes = activeDocTypes.filter((type) => !preferredIds.has(type.doc_type_id));
   const reasonLength = reason.length;
 
   const handleSubmit = async (event: FormEvent) => {
@@ -112,7 +98,7 @@ export function RequestForm({
       {mode === "create" && !documentTypesLoading && !documentTypesError && activeDocTypes.length === 0 ? (
         <div role="status" className="rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-medium">No active document types are currently available.</p>
-          <p className="mt-1">Please contact Student Affairs.</p>
+          <p className="mt-1">Please contact Admin.</p>
         </div>
       ) : null}
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
@@ -155,39 +141,38 @@ export function RequestForm({
         </fieldset>
       ) : null}
 
-      <Field
-        label="Document type"
-        htmlFor={`${idPrefix}-doc-type`}
-        required
-        error={errors.doc_type_id}
-        hint={selectedType?.description}
+      <fieldset
+        id={`${idPrefix}-doc-type`}
+        aria-describedby={errors.doc_type_id ? `${idPrefix}-doc-type-error` : selectedType?.description ? `${idPrefix}-doc-type-hint` : undefined}
+        aria-invalid={!!errors.doc_type_id || undefined}
+        className="flex flex-col gap-2"
       >
-        <Select
-          id={`${idPrefix}-doc-type`}
-          name="doc_type_id"
-          value={docTypeId}
-          onChange={(event) => {
-            setDocTypeId(event.target.value);
-            if (errors.doc_type_id) setErrors((current) => ({ ...current, doc_type_id: undefined }));
-          }}
-          invalid={!!errors.doc_type_id}
-          disabled={submitting || documentTypeDisabled}
-        >
-          <option value="" disabled>
-          Select a document type
-          </option>
-          {preferredOptions.map(({ type, label }) => (
-            <option key={label} value={type?.doc_type_id ?? ""} disabled={!type}>
-              {label}
-            </option>
-          ))}
-          {otherCollegeTypes.map((type) => (
-            <option key={type.doc_type_id} value={type.doc_type_id}>
-              {type.name}
-            </option>
-          ))}
-        </Select>
-      </Field>
+        <legend className="text-sm font-medium text-ink-700">
+          Document type <span className="text-red-600">*</span>
+        </legend>
+        <div role="group" aria-label="Available document types" className="grid gap-2 sm:grid-cols-2">
+          {activeDocTypes.map((type) => {
+            const selected = docTypeId === type.doc_type_id;
+            return (
+              <button
+                key={type.doc_type_id}
+                type="button"
+                aria-pressed={selected}
+                disabled={submitting || documentTypeDisabled}
+                onClick={() => {
+                  setDocTypeId(type.doc_type_id);
+                  if (errors.doc_type_id) setErrors((current) => ({ ...current, doc_type_id: undefined }));
+                }}
+                className={`min-h-11 rounded-control border px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-primary-700 bg-primary-700 text-white" : "border-line bg-white text-ink-900 hover:border-primary-400 hover:bg-primary-50"}`}
+              >
+                {type.name}
+              </button>
+            );
+          })}
+        </div>
+        {errors.doc_type_id ? <p id={`${idPrefix}-doc-type-error`} role="alert" className="text-xs text-red-600">{errors.doc_type_id}</p> : null}
+        {selectedType?.description ? <p id={`${idPrefix}-doc-type-hint`} className="text-xs text-ink-500">{selectedType.description}</p> : null}
+      </fieldset>
 
       <Field
         label="Reason for requesting this document"

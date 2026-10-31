@@ -1,11 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
-import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, UserPlus, X } from "lucide-react";
 import { useDemoAuth } from "../../context/DemoAuthContext";
-import { homePathForProfile, type AppArea } from "../../lib/permissions";
+import {
+  actsAsStudentAffairs,
+  homePathForProfile,
+  isCollegeAdmin,
+  type AppArea,
+} from "../../lib/permissions";
 import { initials, roleLine } from "../../lib/display";
 import { cn } from "../../lib/cn";
 import { Logo } from "../ui/Logo";
-import { NAV_BY_AREA, isNavItemActive } from "./navConfig";
+import { NAV_BY_AREA, isNavItemActive, type NavItem } from "./navConfig";
 
 const DESKTOP_WIDTH = "lg:w-[264px]";
 const DESKTOP_WIDTH_COLLAPSED = "lg:w-[76px]";
@@ -29,6 +34,30 @@ function SidebarContent({
   const location = useLocation();
   const { profile } = useDemoAuth();
   const nav = NAV_BY_AREA[area];
+  const isAdmin = profile?.role === "admin";
+  const isSaDesk = actsAsStudentAffairs(profile);
+  const adminExtras: NavItem[] =
+    isAdmin && area === "admin"
+      ? [
+          {
+            label: "Create Account",
+            icon: UserPlus,
+            to: "/admin/users/new",
+            isActive: (l) => l.pathname.startsWith("/admin/users"),
+          },
+        ]
+      : [];
+  let baseItems = nav.items;
+  if (area === "admin" && isCollegeAdmin(profile) && !isSaDesk) {
+    const readOnlyAdminPaths = new Set([
+      "/admin/dashboard",
+      "/admin/requests",
+      "/admin/filled-forms",
+      "/admin/document-types",
+    ]);
+    baseItems = nav.items.filter((item) => readOnlyAdminPaths.has(item.to));
+  }
+  const navItems = [...baseItems, ...adminExtras];
   const iconOnly = collapsed && !isMobile;
   const current = { pathname: location.pathname, search: location.search };
 
@@ -70,7 +99,7 @@ function SidebarContent({
           </p>
         )}
         <ul className="space-y-1">
-          {nav.items.map((item) => {
+          {navItems.map((item) => {
             const active = isNavItemActive(item, current);
             const Icon = item.icon;
             return (

@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import type { DocRequest } from "../../types/request";
-import { RequestStatusBadge } from "../ui/StatusBadge";
+import { RequestStatusBadge, AdminDecisionBadge } from "../ui/StatusBadge";
+import type { AdminDecisionMap } from "../../services/adminDecisions";
 import { formatDateTime, formatDateOnly } from "../../lib/date";
 import { ROLE_LABELS } from "../../types/auth";
 
@@ -27,6 +28,8 @@ interface RequestTableProps {
   selectable?: boolean;
   selectedIds?: ReadonlySet<string>;
   onToggleSelect?: (requestId: string) => void;
+  /** Admin portal: frontend-only approval decisions keyed by request id. */
+  adminDecisions?: AdminDecisionMap;
 }
 
 /**
@@ -42,6 +45,7 @@ export function RequestTable({
   selectable = false,
   selectedIds,
   onToggleSelect,
+  adminDecisions,
 }: RequestTableProps) {
   const detailHref = (requestId: string) => `${detailPathPrefix}/${requestId}`;
 
@@ -68,6 +72,9 @@ export function RequestTable({
               <th scope="col" className="px-4 py-3 font-medium">Submitted</th>
               <th scope="col" className="px-4 py-3 font-medium">Expected by</th>
               <th scope="col" className="px-4 py-3 font-medium">Status</th>
+              {adminDecisions ? (
+                <th scope="col" className="px-4 py-3 font-medium">Admin decision</th>
+              ) : null}
               <th scope="col" className="px-4 py-3 font-medium">Updated</th>
               <th scope="col" className="px-4 py-3">
                 <span className="sr-only">Actions</span>
@@ -135,6 +142,13 @@ export function RequestTable({
                 <td className="px-4 py-3">
                   <RequestStatusBadge status={request.status} />
                 </td>
+                {adminDecisions ? (
+                  <td className="px-4 py-3">
+                    <AdminDecisionBadge
+                      decision={adminDecisions[request.request_id]?.decision}
+                    />
+                  </td>
+                ) : null}
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-500">
                   <span title={`Updated ${formatDateTime(request.updated_at)}`}>
                     {formatDateTime(request.updated_at)}
@@ -167,7 +181,14 @@ export function RequestTable({
                 <span className="font-mono text-xs font-semibold text-primary-700">
                   {request.request_id}
                 </span>
-                <RequestStatusBadge status={request.status} />
+                <span className="flex items-center gap-1.5">
+                  {adminDecisions ? (
+                    <AdminDecisionBadge
+                      decision={adminDecisions[request.request_id]?.decision}
+                    />
+                  ) : null}
+                  <RequestStatusBadge status={request.status} />
+                </span>
               </span>
               <span className="mt-1.5 block truncate text-sm font-medium text-ink-900">
                 {request.doc_type_name}
