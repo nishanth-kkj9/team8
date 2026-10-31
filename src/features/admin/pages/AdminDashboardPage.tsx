@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, ChevronRight, Clock3, Inbox, MailCheck, Search } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock3, Inbox, MailCheck, Search, UserPlus } from "lucide-react";
 import { useDemoAuth } from "../../../context/DemoAuthContext";
 import { useDocDeskData } from "../../../context/DocDeskDataContext";
 import { PageHeader } from "../../../components/layout/PageHeader";
@@ -63,6 +63,20 @@ export function AdminDashboardPage() {
         description={`Read-only oversight of all document requests across ${profile?.institution_name ?? "the institution"}.`}
         crumbs={[{ label: "Admin" }, { label: "Dashboard" }]}
       />
+
+      <Link
+        to="/admin/users/new"
+        className="flex items-center justify-between gap-4 rounded-card border border-primary-200 bg-primary-50 p-4 text-primary-900 transition-colors hover:bg-primary-100"
+      >
+        <span className="flex items-center gap-3">
+          <UserPlus aria-hidden className="h-5 w-5 shrink-0 text-primary-700" />
+          <span>
+            <span className="block text-sm font-semibold">Register a student</span>
+            <span className="block text-xs text-primary-700">Create an account so the student can sign in to DocDesk.</span>
+          </span>
+        </span>
+        <ChevronRight aria-hidden className="h-4 w-4 shrink-0" />
+      </Link>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Pending" value={counts.pending} icon={Clock3} tone="amber" />

@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import { ToastProvider } from "../context/ToastContext";
-import { DemoAuthProvider } from "../context/DemoAuthContext";
+import { AuthProvider } from "../context/AuthContext";
 import { DocDeskDataProvider } from "../context/DocDeskDataContext";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
-      <DemoAuthProvider>
+      <AuthProvider>
         <DocDeskDataProvider>{children}</DocDeskDataProvider>
-      </DemoAuthProvider>
+      </AuthProvider>
     </ToastProvider>
   );
 }

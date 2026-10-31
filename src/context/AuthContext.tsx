@@ -7,8 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { CampusRole } from "../types/auth";
-import { docDeskService } from "../services/serviceProvider";
+import type { CampusProfile } from "../types/auth";
 import { isValidEmail } from "../lib/validation";
 import { campusOsAuthService } from "../services/api/campusOsAuthService";
 import { setOnSessionExpiredListener } from "../services/api/sessionStore";
@@ -16,85 +15,16 @@ import { setOnSessionExpiredListener } from "../services/api/sessionStore";
 type AuthStatus = "restoring" | "signed-out" | "signed-in";
 
 interface AuthContextValue {
-  profile:
-    | {
-        role: CampusRole;
-        team_id: string;
-        name: string;
-        email_id: string;
-        dept?: string;
-        designation?: string;
-        phone_number?: string;
-        institution_name?: string;
-      }
-    | null;
+  profile: CampusProfile | null;
   status: AuthStatus;
-  signInWithEmail(
-    email: string,
-    otp: string
-  ): Promise<{
-    profile:
-      | {
-        role: CampusRole;
-        team_id: string;
-        name: string;
-        email_id: string;
-        dept?: string;
-        designation?: string;
-        phone_number?: string;
-        institution_name?: string;
-      }
-      | null>;
-    error?: string;
-  }>;
+  signInWithEmail(email: string, otp: string): Promise<{ profile: CampusProfile | null; error?: string }>;
   signOut(): void;
 }
 
-// Simplified context
-const AuthContext = createContext<
-  | {
-    profile: {
-      role: CampusRole;
-      team_id: string;
-      name: string;
-      email_id: string;
-      dept?: string;
-      designation?: string;
-      phone_number?: string;
-      institution_name?: string;
-    } | null;
-    status: AuthStatus;
-    signInWithEmail: (
-      email: string,
-      otp: string
-    ) => Promise<{
-      profile: {
-        role: CampusRole;
-        team_id: string;
-        name: string;
-        email_id: string;
-        dept?: string;
-        designation?: string;
-        phone_number?: string;
-        institution_name?: string;
-      } | null;
-      error?: string;
-    }>;
-    signOut(): void;
-  } | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<
-    | {
-      role: CampusRole;
-      team_id: string;
-      name: string;
-      email_id: string;
-      dept?: string;
-      designation?: string;
-      phone_number?: string;
-      institution_name?: string;
-    } | null>(null);
+  const [profile, setProfile] = useState<CampusProfile | null>(null);
   const [status, setStatus] = useState<AuthStatus>("restoring");
 
   const signOut = useCallback(() => {
@@ -111,34 +41,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [signOut]);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
     async function restoreSession() {
-      const apiSession = campusOsAuthService.getValidSession();
-      if (apiSession) {
-        try {
-          const p = await campusOsAuthService.getCurrentProfile();
-          if (mounted && p.profile) {
-            setProfile(p.profile);
-            setStatus("signed-in");
-            return;
-          }
-        } catch {
-          if (mounted) {
-            clearStoredSession();
-            setProfile(null);
-            setStatus("signed-out");
-          }
-        }
+      const session = campusOsAuthService.getValidSession();
+      if (!session) {
+        if (active) setStatus("signed-out");
+        return;
       }
-      if (mounted) {
+
+      try {
+        const result = await campusOsAuthService.getCurrentProfile();
+        if (!active) return;
+
+        if (result.profile) {
+          setProfile(result.profile);
+          setStatus("signed-in");
+          return;
+        }
+      } catch {
+        // fall through to signed-out
+      }
+
+      if (active) {
+        campusOsAuthService.logout();
+        setProfile(null);
         setStatus("signed-out");
       }
     }
 
     void restoreSession();
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 
@@ -155,34 +89,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const result = await campusOsAuthService.login(trimmedEmail, trimmedOtp);
-
-      if (result.error) {
-        return { profile: null, error: result.error };
+      if (result.error || !result.profile) {
+        return { profile: null, error: result.error || "Authentication failed." };
       }
 
-      setProfile(result.profile || null);
+      setProfile(result.profile);
       setStatus("signed-in");
-      return { profile: result.profile, error: result.error };
+      return { profile: result.profile, error: undefined };
     },
     [],
   );
 
-  return (
-    <AuthContext.Provider
-      profile={profile}
-      status={status}
-      signInWithEmail={signInWithEmail}
-      signOut={signOut}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextValue>(
+    () => ({ profile, status, signInWithEmail, signOut }),
+    [profile, status, signInWithEmail, signOut],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    return { profile: null, status: "signed-out", signInWithEmail: async () => ({ profile: null }), signOut } as const;
+    return {
+      profile: null,
+      status: "signed-out" as const,
+      signInWithEmail: async (): Promise<{ profile: CampusProfile | null; error?: string }> => ({
+        profile: null,
+        error: "Not authenticated.",
+      }),
+      signOut: () => undefined,
+    };
   }
   return ctx;
 }
@@ -191,4 +128,5 @@ export function useDemoAuth() {
   return useAuth();
 }
 
+export const DemoAuthProvider = AuthProvider;
 export const AuthContextValue = AuthContext;

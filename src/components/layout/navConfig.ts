@@ -10,6 +10,7 @@ import {
   Inbox,
   LayoutDashboard,
   UserRound,
+  UserPlus,
 } from "lucide-react";
 import type { AppArea } from "../../lib/permissions";
 
@@ -115,7 +116,7 @@ export const NAV_BY_AREA: Record<AppArea, { heading: string; items: NavItem[] }>
     ],
   },
   admin: {
-    heading: "Admin · read-only",
+    heading: "Admin",
     items: [
       {
         label: "Dashboard",
@@ -134,6 +135,12 @@ export const NAV_BY_AREA: Record<AppArea, { heading: string; items: NavItem[] }>
         icon: Files,
         to: "/admin/document-types",
         isActive: (l) => l.pathname === "/admin/document-types",
+      },
+      {
+        label: "Register Student",
+        icon: UserPlus,
+        to: "/admin/users/new",
+        isActive: (l) => l.pathname === "/admin/users/new",
       },
     ],
   },
@@ -163,6 +170,7 @@ export function pageTitleFor(pathname: string, search: string): string {
     "/admin/dashboard": "Dashboard",
     "/admin/requests": "All Requests",
     "/admin/document-types": "Document Details",
+    "/admin/users/new": "Register Student",
   };
   if (titles[pathname]) return titles[pathname];
   if (/^\/(app|sa|admin)\/requests\/[^/]+$/.test(pathname)) return "Request details";

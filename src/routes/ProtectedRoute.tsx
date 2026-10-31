@@ -1,7 +1,8 @@
 import { Loader2 } from "lucide-react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { AppArea, canAccessArea, canUseReturnPath } from "../lib/permissions";
+import { AppShell } from "../components/layout/AppShell";
+import { type AppArea, canAccessArea, canUseReturnPath } from "../lib/permissions";
 import { AccessDeniedPage } from "./AccessDeniedPage";
 
 /** Protected route wrapper for demo roles (ARCHITECTURE.md §11 route plan).
@@ -41,7 +42,7 @@ export function ProtectedRoute({ area }: { area: AppArea }) {
   // Validate return path - prevent cross-role access
   const from = (location.state as { from?: string } | null)?.from;
   if (from && !canUseReturnPath(area, profile)) {
-    // Invalid return path - go home instead
+    return <Navigate to={"/login"} replace state={{ from: location.pathname + location.search }} />;
   }
 
   if (!canAccessArea(area, profile)) {

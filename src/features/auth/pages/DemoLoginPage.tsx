@@ -81,13 +81,18 @@ export function DemoLoginPage() {
 
     setSubmitting(true);
     try {
-      const signedIn = await signInWithEmail(email, otp);
+      const result = await signInWithEmail(email, otp);
+      if (result.error || !result.profile) {
+        setErrors({ form: result.error || "Sign-in failed." });
+        return;
+      }
+
       toast({
-        title: `Signed in as ${signedIn.name}`,
+        title: `Signed in as ${result.profile.name}`,
         description: "CampusOS session authenticated successfully.",
         variant: "success",
       });
-      navigate(targetFor(signedIn, from), { replace: true });
+      navigate(targetFor(result.profile, from), { replace: true });
     } catch (err) {
       setErrors({ form: err instanceof Error ? err.message : "Sign-in failed." });
     } finally {

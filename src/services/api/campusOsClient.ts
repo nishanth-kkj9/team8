@@ -28,17 +28,15 @@ export function parseFilenameFromContentDisposition(
 ): string {
   if (!header) return fallback;
 
-  // UTF-8 filename pattern filename*=utf-8''encoded_name
   const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(header);
   if (utf8Match && utf8Match[1]) {
     try {
       return decodeURIComponent(utf8Match[1]);
     } catch {
-      // fallback if decoding fails
+      // fallback when decoding fails
     }
   }
 
-  // Standard pattern filename="name" or filename=name
   const standardMatch = /filename="?([^";]+)"?/i.exec(header);
   if (standardMatch && standardMatch[1]) {
     return standardMatch[1].trim();
@@ -175,10 +173,6 @@ export const campusOsClient = {
     return requestJson<T>(path, { method: "DELETE" });
   },
 
-  /**
-   * Multipart Form-Data POST (e.g. answer submission with document)
-   * Note: Do NOT set Content-Type header manually; browser sets boundary.
-   */
   async postForm<T>(path: string, formData: FormData): Promise<T> {
     return requestJson<T>(path, {
       method: "POST",
@@ -186,9 +180,6 @@ export const campusOsClient = {
     });
   },
 
-  /**
-   * Multipart Form-Data PATCH (e.g. answer edit with document)
-   */
   async patchForm<T>(path: string, formData: FormData): Promise<T> {
     return requestJson<T>(path, {
       method: "PATCH",
@@ -196,9 +187,6 @@ export const campusOsClient = {
     });
   },
 
-  /**
-   * Multipart Form-Data PUT (e.g. filled-form upload)
-   */
   async putForm<T>(path: string, formData: FormData): Promise<T> {
     return requestJson<T>(path, {
       method: "PUT",
@@ -206,10 +194,6 @@ export const campusOsClient = {
     });
   },
 
-  /**
-   * Binary File Download Transport
-   * Downloads file with Bearer auth, extracts filename from Content-Disposition.
-   */
   async downloadFile(
     path: string,
     defaultFilename = "download.pdf",
